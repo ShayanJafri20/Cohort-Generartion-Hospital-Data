@@ -1,0 +1,426 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cohort Pipeline Proposal</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,500&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.1/dist/mermaid.min.js"></script>
+<style>
+  :root{
+    --ink:#1B211E; --ink-soft:#4B5650;
+    --paper:#EDEFEA; --paper-raised:#F8F9F5;
+    --line:#CBD0C6;
+    --accent:#A8672E; --accent-soft:#E7D5C0;
+    --structural:#4C6B7A; --structural-soft:#D9E3E6;
+    --good:#3F6E52; --good-soft:#DCE9DF;
+    --warn:#93691A; --warn-soft:#EFE1BC;
+    --risk:#A2493C; --risk-soft:#EFD9D4;
+    --shadow: 0 1px 2px rgba(27,33,30,0.06), 0 6px 20px rgba(27,33,30,0.05);
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --ink:#E9EDE8; --ink-soft:#AEB8B0;
+      --paper:#141713; --paper-raised:#1B1F1A;
+      --line:#333A32;
+      --accent:#D3924F; --accent-soft:#3A2E1E;
+      --structural:#8DB0BE; --structural-soft:#20303A;
+      --good:#7FBC97; --good-soft:#1D3327;
+      --warn:#E3C468; --warn-soft:#3A2F16;
+      --risk:#E28E7E; --risk-soft:#3A211D;
+      --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 8px 24px rgba(0,0,0,0.35);
+    }
+  }
+  :root[data-theme="dark"]{
+    --ink:#E9EDE8; --ink-soft:#AEB8B0;
+    --paper:#141713; --paper-raised:#1B1F1A;
+    --line:#333A32;
+    --accent:#D3924F; --accent-soft:#3A2E1E;
+    --structural:#8DB0BE; --structural-soft:#20303A;
+    --good:#7FBC97; --good-soft:#1D3327;
+    --warn:#E3C468; --warn-soft:#3A2F16;
+    --risk:#E28E7E; --risk-soft:#3A211D;
+    --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 8px 24px rgba(0,0,0,0.35);
+  }
+  *{box-sizing:border-box;}
+  body{ background:var(--paper); color:var(--ink); font-family:"IBM Plex Sans",ui-sans-serif,system-ui,sans-serif; font-size:16px; line-height:1.65; }
+  h1,h2,h3{ font-family:"Newsreader",ui-serif,Georgia,serif; color:var(--ink); text-wrap:balance; font-weight:600; margin:0; }
+  code,.mono{ font-family:"IBM Plex Mono",ui-monospace,SFMono-Regular,monospace; }
+  a{ color:var(--accent); }
+  ::selection{ background:var(--accent-soft); }
+
+  .layout{ display:grid; grid-template-columns:240px minmax(0,1fr); min-height:100vh; }
+  @media (max-width:860px){ .layout{ grid-template-columns:1fr; } .toc-rail{ position:static; height:auto; border-right:none; border-bottom:1px solid var(--line);} }
+
+  .toc-rail{ position:sticky; top:0; height:100vh; overflow-y:auto; border-right:1px solid var(--line); padding:28px 20px 40px; }
+  .toc-rail .kicker{ font-family:"IBM Plex Mono",monospace; font-size:11px; letter-spacing:0.08em; text-transform:uppercase; color:var(--accent); }
+  .toc-rail h1{ font-size:1.2rem; line-height:1.25; margin-top:4px; }
+  .toc-rail p{ font-size:0.82rem; color:var(--ink-soft); margin-top:6px; }
+  nav.toc{ display:flex; flex-direction:column; gap:2px; margin-top:22px; }
+  nav.toc a{ display:block; padding:8px 10px; border-radius:8px; color:var(--ink); text-decoration:none; font-size:0.88rem; border:1px solid transparent; }
+  nav.toc a:hover{ background:var(--paper-raised); }
+  nav.toc a.active{ background:var(--paper-raised); border-color:var(--line); font-weight:500; color:var(--accent); }
+
+  main{ padding:60px clamp(20px,5vw,80px) 120px; max-width:900px; }
+  .cover .kicker{ font-family:"IBM Plex Mono",monospace; font-size:0.78rem; letter-spacing:0.05em; text-transform:uppercase; color:var(--structural); }
+  .cover h1{ font-size:2.4rem; margin-top:10px; }
+  .cover p.lede{ font-size:1.08rem; color:var(--ink-soft); max-width:62ch; margin-top:14px; }
+
+  section{ padding-top:56px; margin-top:-6px; border-top:1px solid var(--line); scroll-margin-top:20px; }
+  section:first-of-type{ border-top:none; padding-top:0; }
+  section h2{ font-size:1.7rem; }
+  .dek{ color:var(--ink-soft); max-width:64ch; margin-top:10px; }
+
+  .callout{ margin:22px 0; padding:16px 18px; border-radius:10px; background:var(--structural-soft); border:1px solid var(--line); font-size:0.95rem; }
+  .callout .k{ font-family:"IBM Plex Mono",monospace; font-size:0.72rem; text-transform:uppercase; color:var(--structural); letter-spacing:0.05em; display:block; margin-bottom:6px; }
+  .callout.accent{ background:var(--accent-soft); }
+  .callout.accent .k{ color:var(--accent); }
+
+  .diagram{ background:var(--paper-raised); border:1px solid var(--line); border-radius:12px; padding:18px; margin:22px 0; overflow-x:auto; }
+
+  .table-wrap{ overflow-x:auto; margin:22px 0; border:1px solid var(--line); border-radius:12px; }
+  table{ width:100%; border-collapse:collapse; font-size:0.87rem; min-width:640px; }
+  th,td{ text-align:left; padding:11px 13px; border-bottom:1px solid var(--line); vertical-align:top; }
+  thead th{ font-family:"IBM Plex Mono",monospace; font-size:0.68rem; text-transform:uppercase; letter-spacing:0.04em; color:var(--ink-soft); background:var(--paper-raised); }
+  tbody tr:last-child td{ border-bottom:none; }
+  td.label{ font-weight:500; white-space:nowrap; }
+  .severity{ font-family:"IBM Plex Mono",monospace; font-size:0.68rem; text-transform:uppercase; padding:2px 8px; border-radius:5px; white-space:nowrap; }
+  .severity.critical{ background:var(--risk-soft); color:var(--risk); }
+  .severity.high{ background:var(--warn-soft); color:var(--warn); }
+  .severity.medium{ background:var(--structural-soft); color:var(--structural); }
+
+  .json-block{ background:var(--paper-raised); border:1px solid var(--line); border-radius:10px; padding:16px 18px; margin:16px 0; overflow-x:auto; }
+  .json-block pre{ margin:0; font-family:"IBM Plex Mono",monospace; font-size:0.83rem; line-height:1.55; }
+  .json-label{ font-family:"IBM Plex Mono",monospace; font-size:0.72rem; text-transform:uppercase; letter-spacing:0.05em; color:var(--accent); margin:26px 0 4px; display:block; }
+  .field-notes{ margin:10px 0 24px; padding-left:1.2em; font-size:0.92rem; }
+  .field-notes li{ margin-bottom:6px; max-width:66ch; }
+  .field-notes code{ background:var(--paper-raised); padding:1px 5px; border-radius:4px; }
+
+  ol.steps{ margin:20px 0; padding-left:1.4em; display:flex; flex-direction:column; gap:14px; }
+  ol.steps li{ max-width:68ch; }
+  ol.steps b{ color:var(--accent); }
+
+  ul.plain{ padding-left:1.2em; margin:14px 0; }
+  ul.plain li{ margin-bottom:8px; max-width:66ch; }
+
+  footer.note{ margin-top:70px; padding-top:20px; border-top:1px solid var(--line); color:var(--ink-soft); font-size:0.85rem; }
+</style>
+</head>
+<body>
+
+<div class="layout">
+  <aside class="toc-rail">
+    <span class="kicker">Cohort Generation Platform</span>
+    <h1>Approach &amp; RM Briefing</h1>
+    <p>A single walk-through document: the plan, the concerns, the recommendation, and how one patient record actually moves through it.</p>
+    <nav class="toc" id="toc">
+      <a href="#overview">Overview</a>
+      <a href="#problem">The problem, briefly</a>
+      <a href="#architecture">Architecture diagram</a>
+      <a href="#concerns">Concerns identified</a>
+      <a href="#approach">Proposed approach</a>
+      <a href="#backend">Backend structure</a>
+      <a href="#json">Inside a FHIR record</a>
+    </nav>
+  </aside>
+
+  <main>
+    <div class="cover">
+      <span class="kicker">Prepared for a review conversation</span>
+      <h1>Cohort Generation Platform: Approach &amp; Recommendation</h1>
+      <p class="lede">This document exists to be walked through out loud: what we're building, why the starting design had real gaps, what we're proposing instead, and — new in this version — exactly what's inside one of these hospital records and what happens to it, field by field.</p>
+    </div>
+
+    <section id="overview">
+      <h2>Overview</h2>
+      <p class="dek">One paragraph, no jargon.</p>
+      <div class="callout accent">
+        <span class="k">The plan in one breath</span>
+        We pull patient records from a hospital's system in a standard format (FHIR), keep a permanent untouched copy the moment we receive it, translate every hospital's medical terms into one shared vocabulary, load everything into a standard research database (OMOP), and then turn a clinical trial's written eligibility rules into a precise, explainable patient list — with an AI drafting the rules from the protocol, but never touching the database directly. Everything runs on free, local tools for now; nothing about that choice is throwaway, since each tool has a direct upgrade path to paid cloud services later, one piece at a time, only when actually needed.
+      </div>
+    </section>
+
+    <section id="problem">
+      <h2>The problem, briefly</h2>
+      <p class="dek">Every hospital describes the same patient differently, transformations will need fixing after the fact, and a clinical trial's patient list has to be explainable months later. The whole pipeline exists to solve exactly those three problems — nothing more.</p>
+      <p>Worked example carried through this whole document: a 55-year-old with Type 2 diabetes, an HbA1c of 8.2%, taking Metformin.</p>
+    </section>
+
+    <section id="architecture">
+      <h2>Architecture diagram</h2>
+      <p class="dek">What we'd actually run on day one — free and local, with a direct upgrade path to managed cloud services already built in.</p>
+      <div class="diagram">
+        <pre class="mermaid">
+flowchart LR
+  SRC["Hospital FHIR API\n(or synthetic data)"] --> PULL["Python pull script\n(Task Scheduler)"]
+  PULL --> ICE["Iceberg raw tables\n(PyIceberg, local disk)"]
+  ICE --> STG["Python loader"]
+  STG --> PG[("Postgres in Docker:\nstaging to OMOP to marts, via dbt")]
+  LLM["LLM drafts cohort spec"] --> COMPILE["Python: validate + compile to SQL"]
+  COMPILE --> PG
+  PG --> OUT["Eligible patient list"]
+        </pre>
+      </div>
+      <ul class="plain">
+        <li><b>Iceberg (via PyIceberg, no Spark needed)</b> keeps a permanent, versioned copy of every record exactly as received.</li>
+        <li><b>Postgres</b> holds the standardized OMOP warehouse — the same database OHDSI's own research tools expect.</li>
+        <li><b>dbt</b> does every transformation and blocks bad data with automated tests before it reaches OMOP.</li>
+        <li><b>The AI only ever drafts a structured spec</b>; a separate, deterministic step compiles and runs the actual SQL.</li>
+      </ul>
+    </section>
+
+    <section id="concerns">
+      <h2>Concerns identified</h2>
+      <p class="dek">A critical pass over the starting design, before any tool was chosen — ranked by how much damage each would actually do.</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Concern</th><th>Severity</th><th>How it's addressed</th></tr></thead>
+          <tbody>
+            <tr><td class="label">Raw copy isn't actually protected or traceable</td><td><span class="severity critical">Critical</span></td><td>Immutable, versioned Iceberg snapshots + a metadata table linking every OMOP row back to its source.</td></tr>
+            <tr><td class="label">A patient can silently vanish from a cohort</td><td><span class="severity critical">Critical</span></td><td>Every unmapped medical code is reported, not silently dropped.</td></tr>
+            <tr><td class="label">Same cohort, different answer next time</td><td><span class="severity critical">Critical</span></td><td>Every result stamped with the exact code version, vocabulary version, and data snapshot used.</td></tr>
+            <tr><td class="label">Whole pipeline depends on one machine</td><td><span class="severity high">High</span></td><td>Each job logs its own success/failure to Postgres; alerts on failure.</td></tr>
+            <tr><td class="label">Data arrives stale, on a timer</td><td><span class="severity high">High</span></td><td>Incremental FHIR sync (only pull what changed), pending confirmation the source supports it.</td></tr>
+            <tr><td class="label">Nothing checks data quality before OMOP</td><td><span class="severity high">High</span></td><td>Automated dbt tests gate every load.</td></tr>
+            <tr><td class="label">No enforced limit on what the AI can see</td><td><span class="severity high">High</span></td><td>AI only ever receives protocol text + vocabulary lookups — never raw patient rows or database access.</td></tr>
+            <tr><td class="label">One hospital's bad data can break everyone's pipeline</td><td><span class="severity medium">Medium</span></td><td>Each source gets its own isolated scheduled job.</td></tr>
+            <tr><td class="label">No one would notice a data or cohort-size anomaly</td><td><span class="severity medium">Medium</span></td><td>Daily row-count / cohort-size comparison check.</td></tr>
+            <tr><td class="label">Security assumed, not designed</td><td><span class="severity medium">Medium</span></td><td>Credentials in a local <code>.env</code> file now, Key Vault + managed identities once this moves to Azure.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="approach">
+      <h2>Proposed approach</h2>
+      <p class="dek">The smallest set of proven, free tools that closes every concern above — nothing here requires a paid Azure subscription.</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Piece</th><th>Pick, free &amp; local</th><th>Upgrades to, later</th></tr></thead>
+          <tbody>
+            <tr><td class="label">Raw storage</td><td>Iceberg tables on local disk (PyIceberg)</td><td>Same tables, pointed at Azure Data Lake</td></tr>
+            <tr><td class="label">Warehouse</td><td>Postgres in Docker</td><td>Azure Database for PostgreSQL</td></tr>
+            <tr><td class="label">Transformation &amp; tests</td><td>dbt Core</td><td>Unchanged</td></tr>
+            <tr><td class="label">Scheduling</td><td>Windows Task Scheduler / cron</td><td>Azure Data Factory</td></tr>
+            <tr><td class="label">Secrets</td><td>Local <code>.env</code> file</td><td>Azure Key Vault</td></tr>
+            <tr><td class="label">Monitoring</td><td>A Postgres run-log + daily check script</td><td>Azure Monitor</td></tr>
+            <tr><td class="label">Vocabulary</td><td>OHDSI Athena download, versioned</td><td>Unchanged</td></tr>
+            <tr><td class="label">Cohort AI</td><td>LLM drafts spec; Python compiles + runs SQL</td><td>Unchanged — this rule holds regardless of budget</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="callout">
+        <span class="k">Deliberately not using yet</span>
+        Spark, Kubernetes, Kafka/streaming, and a full orchestrator like Airflow — none of them fix a problem this project has at its current scale. Each has a specific, named trigger (in the full workbook) for when it would start earning its cost.
+      </div>
+    </section>
+
+    <section id="backend">
+      <h2>Backend structure: how we'll actually build this</h2>
+      <p class="dek">A single, small Python codebase, organized by pipeline stage — not a collection of unrelated scripts. Each folder is independently runnable and testable on its own.</p>
+
+      <div class="json-block"><pre>cohort-platform/
+├── .env.example                  # Template for local secrets — never committed
+├── docker-compose.yml             # Spins up local Postgres
+├── requirements.txt
+│
+├── ingestion/
+│   ├── pull_fhir.py               # Pulls Bundles from a hospital's FHIR API using _lastUpdated
+│   ├── validate_bundle.py         # Schema/sanity checks before anything is written
+│   └── sources.yaml               # Per-hospital connection settings (credentials via .env)
+│
+├── raw/
+│   └── iceberg_catalog.py         # PyIceberg setup — catalog metadata lives in Postgres, files on local disk
+│
+├── staging/
+│   └── load_to_staging.py         # Flattens raw Iceberg/JSON into Postgres staging tables
+│
+├── vocabulary/
+│   ├── athena_loader.py           # Loads/refreshes the OHDSI vocabulary tables, versioned
+│   └── mapping_report.py          # Reports every source code with no standard-concept match
+│
+├── transform/                      # dbt project
+│   ├── models/
+│   │   ├── staging/                # 1:1 cleaned models, one per FHIR resource type
+│   │   ├── omop/                   # PERSON, CONDITION_OCCURRENCE, MEASUREMENT, DRUG_EXPOSURE, ...
+│   │   └── marts/                  # Diabetes Mart, etc. — built on top of omop/
+│   ├── tests/                      # dbt tests: not-null, relationships, clinical plausibility
+│   └── dbt_project.yml
+│
+├── cohort/
+│   ├── cohort_spec.schema.json    # The JSON Schema every LLM-drafted spec must satisfy
+│   ├── llm_draft.py                # Calls the LLM, returns a structured spec — nothing else
+│   ├── validate_spec.py            # Validates the spec against the schema and known concept sets
+│   ├── compile_sql.py              # Deterministic: spec -&gt; parameterized SQL
+│   └── run_cohort.py               # Executes the SQL, stamps the result with versions
+│
+├── monitoring/
+│   ├── run_log_schema.sql          # Postgres table: one row per pipeline run
+│   └── daily_check.py              # Row-count / cohort-size anomaly check + alert
+│
+├── orchestration/
+│   └── run_pipeline.py             # The single entry point Task Scheduler calls each night
+│
+└── docs/                            # This proposal, the full workbook, etc.</pre></div>
+
+      <h3 style="margin-top:30px; font-size:1.2rem;">How it actually runs, night to night</h3>
+      <ol class="steps">
+        <li><b>Task Scheduler</b> triggers <code>orchestration/run_pipeline.py</code> once a night (e.g. 2 AM).</li>
+        <li>It calls <code>ingestion/pull_fhir.py</code> once <b>per hospital source</b>, so one source's failure can't touch another's.</li>
+        <li>Each pull is validated, then written into an immutable <b>Iceberg snapshot</b>.</li>
+        <li><code>staging/load_to_staging.py</code> flattens the new raw data into Postgres staging tables.</li>
+        <li><code>dbt run</code> builds staging → OMOP → marts, using the vocabulary tables to map every source code to a standard concept.</li>
+        <li><code>dbt test</code> runs the data-quality gate; a critical failure halts promotion and raises an alert instead of silently loading bad data.</li>
+        <li><code>monitoring/daily_check.py</code> compares today's row counts against the recent average and logs everything — including the git commit hash and vocabulary version used — to the run-log table.</li>
+        <li>Success or failure, the run-log table now has a complete, queryable history of every pipeline run.</li>
+      </ol>
+      <p><b>Cohort generation runs separately, on demand</b> — not as part of the nightly batch: someone submits a trial protocol → <code>llm_draft.py</code> proposes a structured spec → <code>validate_spec.py</code> checks it → <code>compile_sql.py</code> turns it into SQL → <code>run_cohort.py</code> executes it against the OMOP marts and returns a patient list stamped with exactly which data snapshot, vocabulary version, and code version produced it.</p>
+
+      <h3 style="margin-top:30px; font-size:1.2rem;">Core technology per piece</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Piece</th><th>Library / tool</th></tr></thead>
+          <tbody>
+            <tr><td class="label">FHIR pulls</td><td><code>requests</code> (plain HTTP calls to the FHIR REST API)</td></tr>
+            <tr><td class="label">Raw storage</td><td><code>pyiceberg</code></td></tr>
+            <tr><td class="label">Database</td><td>PostgreSQL (Docker), via <code>psycopg2</code> / <code>SQLAlchemy</code></td></tr>
+            <tr><td class="label">Transformation &amp; tests</td><td><code>dbt-core</code> + <code>dbt-postgres</code></td></tr>
+            <tr><td class="label">Config &amp; secrets</td><td><code>python-dotenv</code>, a <code>.env</code> file</td></tr>
+            <tr><td class="label">Cohort spec validation</td><td><code>jsonschema</code></td></tr>
+            <tr><td class="label">LLM calls</td><td>Anthropic (or OpenAI) SDK</td></tr>
+            <tr><td class="label">Scheduling</td><td>Windows Task Scheduler (or cron)</td></tr>
+            <tr><td class="label">Version control</td><td>git — every pipeline run stamps its own commit hash</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="json">
+      <h2>Inside a FHIR record, and how it's handled</h2>
+      <p class="dek">Everything above has been about the pipeline in the abstract. This section is the concrete version: what one of these JSON records actually contains, and exactly what happens to it, step by step.</p>
+
+      <p>A hospital doesn't send one record at a time — a query returns a <b>Bundle</b>, a JSON envelope holding a batch of resources. Inside that batch, here's what the four resources for our example patient actually look like.</p>
+
+      <span class="json-label">Patient</span>
+      <div class="json-block"><pre>{
+  "resourceType": "Patient",
+  "id": "patient-88213",
+  "identifier": [{ "system": "urn:hospital-mrn", "value": "MRN-88213" }],
+  "gender": "male",
+  "birthDate": "1971-03-14"
+}</pre></div>
+      <ul class="field-notes">
+        <li><code>resourceType</code> — tells every downstream system which of the ~150 FHIR resource types this is, so it knows what fields to expect.</li>
+        <li><code>identifier</code> — the hospital's own patient number (MRN). Not the ID we'll use once this is in OMOP — that gets assigned fresh.</li>
+      </ul>
+
+      <span class="json-label">Condition — the diabetes diagnosis</span>
+      <div class="json-block"><pre>{
+  "resourceType": "Condition",
+  "id": "condition-4471",
+  "subject": { "reference": "Patient/patient-88213" },
+  "code": {
+    "coding": [
+      { "system": "http://hl7.org/fhir/sid/icd-10", "code": "E11.9",
+        "display": "Type 2 diabetes mellitus without complications" },
+      { "system": "http://snomed.info/sct", "code": "44054006",
+        "display": "Type 2 diabetes mellitus" }
+    ]
+  },
+  "onsetDateTime": "2022-06-01",
+  "recordedDate": "2022-06-03"
+}</pre></div>
+      <ul class="field-notes">
+        <li><code>subject.reference</code> — how FHIR links records together, like a foreign key: "this Condition belongs to that Patient."</li>
+        <li><code>code.coding</code> is a <b>list</b>, on purpose — the same diagnosis is often recorded in two vocabularies at once: ICD-10 (what billing uses) and SNOMED (what clinical systems use). Both describe the same real-world fact.</li>
+        <li><code>onsetDateTime</code> vs <code>recordedDate</code> — when the disease actually started, versus when someone typed it into the system. Cohort rules that say "diagnosed before enrollment" care about the first one.</li>
+      </ul>
+
+      <span class="json-label">Observation — the HbA1c result</span>
+      <div class="json-block"><pre>{
+  "resourceType": "Observation",
+  "id": "obs-9981",
+  "subject": { "reference": "Patient/patient-88213" },
+  "code": {
+    "coding": [{ "system": "http://loinc.org", "code": "4548-4",
+      "display": "Hemoglobin A1c/Hemoglobin.total in Blood" }]
+  },
+  "effectiveDateTime": "2026-05-12",
+  "valueQuantity": { "value": 8.2, "unit": "%", "system": "http://unitsofmeasure.org", "code": "%" }
+}</pre></div>
+      <ul class="field-notes">
+        <li>Lab results use <b>LOINC</b> codes, not ICD-10 or SNOMED — a third vocabulary, specifically for tests and measurements.</li>
+        <li><code>valueQuantity</code> carries the number <em>and</em> its unit together — never assume a bare number's unit; "8.2" means nothing without "%" attached.</li>
+      </ul>
+
+      <span class="json-label">MedicationStatement — the Metformin</span>
+      <div class="json-block"><pre>{
+  "resourceType": "MedicationStatement",
+  "id": "medstmt-3321",
+  "subject": { "reference": "Patient/patient-88213" },
+  "medicationCodeableConcept": {
+    "coding": [{ "system": "http://www.nlm.nih.gov/research/umls/rxnorm",
+      "code": "6809", "display": "Metformin" }]
+  },
+  "status": "active",
+  "effectivePeriod": { "start": "2022-06-10" }
+}</pre></div>
+      <ul class="field-notes">
+        <li>Medications use <b>RxNorm</b> — yet another vocabulary, specific to drugs.</li>
+        <li><code>effectivePeriod</code> is a range, not a single date — exposure has a start (and sometimes an end), which matters for rules like "on Metformin for the last 12 months."</li>
+      </ul>
+
+      <div class="callout accent" style="margin-top:28px;">
+        <span class="k">Notice the pattern</span>
+        Four resources, four different vocabularies (ICD-10/SNOMED, SNOMED, LOINC, RxNorm) — all just to describe one simple clinical picture. This is exactly why the vocabulary-mapping step in Chapter 04 of the full workbook is the hardest, most important part of the whole pipeline: nothing here is naturally comparable across hospitals until it's translated.
+      </div>
+
+      <h3 style="margin-top:36px; font-size:1.2rem;">What happens to this JSON, step by step</h3>
+      <ol class="steps">
+        <li><b>Received</b> — the pull script gets a Bundle back from the hospital's FHIR API containing all four resources (and more) for records changed since the last check.</li>
+        <li><b>Validated</b> — a quick sanity check: is this valid JSON, does each resource have the fields we require (<code>resourceType</code>, <code>subject</code>, a code)? Anything malformed is quarantined, not silently dropped or allowed to crash the run.</li>
+        <li><b>Stored raw</b> — each resource is written into an Iceberg snapshot exactly as received, byte for byte. This exact JSON is now permanently retrievable, forever, regardless of what happens next.</li>
+        <li><b>Parsed</b> — a Python script "unwraps" the nested JSON into flat rows: for the Condition above, that becomes one row with columns like <code>patient_id, code_system, code_value, onset_date</code>. This is where deeply nested structure becomes something a database can index and join.</li>
+        <li><b>Vocabulary-mapped</b> — the <code>(code_system, code_value)</code> pair — e.g. <code>("ICD-10", "E11.9")</code> — is looked up in the OHDSI vocabulary tables to find its OMOP standard concept (<code>201826</code>, Type 2 diabetes mellitus). If a code has no match, that's logged and flagged, not silently skipped — this is the exact fix for the "patient can vanish" concern above.</li>
+        <li><b>Loaded into OMOP</b> — the mapped, flattened row becomes a real row in <code>CONDITION_OCCURRENCE</code>: <code>condition_concept_id</code> holds the standard concept, <code>condition_source_value</code> keeps the original "E11.9" text for reference, and <code>person_id</code> ties it to this patient's other data.</li>
+        <li><b>Queryable</b> — from here it's just an ordinary row in an ordinary SQL table, joinable with every other patient's data from every other hospital the exact same way. This is the payoff for everything above it.</li>
+      </ol>
+    </section>
+
+    <footer class="note">
+      Companion to the full Architecture Workbook, which carries the complete step-by-step reasoning behind every decision summarized here.
+    </footer>
+  </main>
+</div>
+
+<script>
+(function(){
+  if(window.mermaid){
+    var dark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+    mermaid.initialize({ startOnLoad: true, theme: dark ? 'dark' : 'default', securityLevel: 'loose' });
+  }
+  var links = Array.prototype.slice.call(document.querySelectorAll('#toc a'));
+  var sections = links.map(function(a){ return document.querySelector(a.getAttribute('href')); }).filter(Boolean);
+  var byId = {};
+  links.forEach(function(a){ byId[a.getAttribute('href').slice(1)] = a; });
+  if('IntersectionObserver' in window){
+    var obs = new IntersectionObserver(function(entries){
+      entries.forEach(function(entry){
+        var link = byId[entry.target.id];
+        if(!link) return;
+        if(entry.isIntersecting){ links.forEach(function(l){ l.classList.remove('active'); }); link.classList.add('active'); }
+      });
+    }, { rootMargin:'-10% 0px -70% 0px', threshold:0 });
+    sections.forEach(function(s){ obs.observe(s); });
+  }
+  links.forEach(function(a){
+    a.addEventListener('click', function(e){
+      var target = document.querySelector(a.getAttribute('href'));
+      if(target){ e.preventDefault(); target.scrollIntoView({behavior:'smooth', block:'start'}); }
+    });
+  });
+})();
+</script>
+</body>
+</html>

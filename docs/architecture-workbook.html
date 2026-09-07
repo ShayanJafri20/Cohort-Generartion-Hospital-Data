@@ -1,0 +1,924 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cohort Architecture Workbook</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,500&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.1/dist/mermaid.min.js"></script>
+<style>
+  :root{
+    --ink:#1B211E;
+    --ink-soft:#4B5650;
+    --paper:#EDEFEA;
+    --paper-raised:#F8F9F5;
+    --line:#CBD0C6;
+    --accent:#A8672E;
+    --accent-soft:#E7D5C0;
+    --structural:#4C6B7A;
+    --structural-soft:#D9E3E6;
+    --good:#3F6E52;
+    --good-soft:#DCE9DF;
+    --warn:#93691A;
+    --warn-soft:#EFE1BC;
+    --risk:#A2493C;
+    --risk-soft:#EFD9D4;
+    --shadow: 0 1px 2px rgba(27,33,30,0.06), 0 6px 20px rgba(27,33,30,0.05);
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --ink:#E9EDE8;
+      --ink-soft:#AEB8B0;
+      --paper:#141713;
+      --paper-raised:#1B1F1A;
+      --line:#333A32;
+      --accent:#D3924F;
+      --accent-soft:#3A2E1E;
+      --structural:#8DB0BE;
+      --structural-soft:#20303A;
+      --good:#7FBC97;
+      --good-soft:#1D3327;
+      --warn:#E3C468;
+      --warn-soft:#3A2F16;
+      --risk:#E28E7E;
+      --risk-soft:#3A211D;
+      --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 8px 24px rgba(0,0,0,0.35);
+      color-scheme: dark;
+    }
+  }
+
+  *{box-sizing:border-box;}
+  html,body{ margin:0; padding:0; }
+  body{
+    background:var(--paper);
+    color:var(--ink);
+    font-family:"IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+    font-size:16px;
+    line-height:1.6;
+  }
+  img{ max-width:100%; }
+  [hidden]{ display:none !important; }
+  h1,h2,h3{
+    font-family:"Newsreader", ui-serif, Georgia, serif;
+    color:var(--ink);
+    text-wrap:balance;
+    font-weight:600;
+    margin:0;
+  }
+  code, .mono, .pill, kbd{
+    font-family:"IBM Plex Mono", ui-monospace, SFMono-Regular, monospace;
+  }
+  a{ color:var(--accent); }
+  ::selection{ background:var(--accent-soft); }
+
+  .layout{
+    display:grid;
+    grid-template-columns:272px minmax(0,1fr);
+    min-height:100vh;
+  }
+  @media (max-width: 860px){
+    .layout{ grid-template-columns:1fr; }
+    .sidebar{ position:static; height:auto; border-right:none; border-bottom:1px solid var(--line); }
+  }
+
+  .sidebar{
+    position:sticky; top:0; height:100vh; overflow-y:auto;
+    border-right:1px solid var(--line);
+    padding:28px 20px 40px;
+    display:flex; flex-direction:column; gap:24px;
+  }
+  .brand{
+    display:flex; flex-direction:column; gap:4px;
+  }
+  .brand .kicker{
+    font-family:"IBM Plex Mono", monospace;
+    font-size:11px; letter-spacing:0.08em; text-transform:uppercase;
+    color:var(--accent);
+  }
+  .brand h1{ font-size:1.35rem; line-height:1.2; }
+  .brand p{ margin:2px 0 0; font-size:0.85rem; color:var(--ink-soft); }
+
+  .progress-track{
+    height:6px; border-radius:99px; background:var(--line); overflow:hidden;
+  }
+  .progress-fill{
+    height:100%; background:var(--accent); width:14%;
+  }
+  .progress-label{ font-size:0.78rem; color:var(--ink-soft); }
+
+  nav.toc{ display:flex; flex-direction:column; gap:2px; }
+  nav.toc a{
+    display:flex; align-items:center; justify-content:space-between; gap:8px;
+    padding:9px 10px; border-radius:8px;
+    color:var(--ink); text-decoration:none; font-size:0.92rem;
+    border:1px solid transparent;
+  }
+  nav.toc a:hover{ background:var(--paper-raised); }
+  nav.toc a.active{
+    background:var(--paper-raised);
+    border-color:var(--line);
+    font-weight:500;
+  }
+  nav.toc a.active .num{ color:var(--accent); }
+  nav.toc .num{ font-family:"IBM Plex Mono", monospace; font-size:0.78rem; color:var(--ink-soft); width:1.4em; }
+  nav.toc .label{ flex:1; }
+  .status{
+    font-family:"IBM Plex Mono", monospace;
+    font-size:0.65rem; letter-spacing:0.03em; text-transform:uppercase;
+    padding:2px 6px; border-radius:5px; white-space:nowrap;
+  }
+  .status.done{ background:var(--good-soft); color:var(--good); }
+  .status.pending{ background:var(--line); color:var(--ink-soft); }
+
+  main{ padding:56px clamp(20px,5vw,72px) 120px; max-width:920px; }
+  .lede{
+    font-size:1.05rem; color:var(--ink-soft); max-width:62ch; margin-top:10px;
+  }
+  section.chapter{
+    padding-top:64px; margin-top:-8px; scroll-margin-top:24px;
+    border-top:1px solid var(--line);
+  }
+  section.chapter:first-of-type{ border-top:none; }
+  .chapter-head{
+    display:flex; align-items:baseline; gap:14px; flex-wrap:wrap;
+    margin-bottom:6px;
+  }
+  .chapter-eyebrow{
+    font-family:"IBM Plex Mono", monospace; font-size:0.78rem; color:var(--structural);
+    letter-spacing:0.04em;
+  }
+  section.chapter h2{ font-size:1.9rem; }
+  .chapter-dek{ color:var(--ink-soft); max-width:64ch; margin-top:10px; }
+
+  .card{
+    background:var(--paper-raised);
+    border:1px solid var(--line);
+    border-radius:12px;
+    padding:20px 22px;
+    box-shadow:var(--shadow);
+  }
+
+  /* Layer walkthrough */
+  .journey{ display:flex; flex-direction:column; gap:0; margin-top:28px; }
+  .layer{
+    display:grid; grid-template-columns:56px 1fr; gap:18px;
+    padding:22px 0;
+    border-top:1px dashed var(--line);
+  }
+  .layer:first-child{ border-top:none; }
+  .layer-num{
+    font-family:"IBM Plex Mono", monospace; font-size:0.95rem; color:var(--accent);
+    display:flex; flex-direction:column; align-items:center; gap:6px;
+  }
+  .layer-num .dot{
+    width:9px; height:9px; border-radius:50%; background:var(--accent);
+  }
+  .layer h3{ font-size:1.12rem; margin-bottom:8px; }
+  .layer p{ max-width:62ch; margin:0 0 12px; }
+  .layer .term{ border-bottom:none; padding:4px 0; }
+  .layer .tech-tag{
+    display:inline-block; margin-top:6px;
+    font-family:"IBM Plex Mono", monospace; font-size:0.76rem;
+    background:var(--structural-soft); color:var(--structural);
+    padding:3px 8px; border-radius:6px;
+  }
+  .layer-grid{
+    display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
+    gap:14px; margin-top:14px;
+  }
+  .layer-field{ font-size:0.92rem; }
+  .layer-field .k{
+    font-family:"IBM Plex Mono", monospace; font-size:0.72rem; text-transform:uppercase;
+    letter-spacing:0.05em; color:var(--ink-soft); display:block; margin-bottom:3px;
+  }
+  .layer-why{
+    margin-top:14px; padding:12px 14px; border-radius:8px;
+    background:var(--accent-soft); font-size:0.92rem;
+  }
+  .layer-why b{ color:var(--accent); }
+
+  .callout{
+    margin:26px 0; padding:16px 18px; border-radius:10px;
+    background:var(--structural-soft); border:1px solid var(--line);
+    font-size:0.95rem;
+  }
+  .callout .k{
+    font-family:"IBM Plex Mono", monospace; font-size:0.72rem; text-transform:uppercase;
+    color:var(--structural); letter-spacing:0.05em; display:block; margin-bottom:6px;
+  }
+
+  /* Findings (weaknesses) */
+  .findings{ display:flex; flex-direction:column; gap:0; margin-top:28px; }
+  .finding{ padding:22px 0; border-top:1px dashed var(--line); }
+  .finding:first-child{ border-top:none; }
+  .finding-head{
+    display:flex; align-items:baseline; gap:12px; flex-wrap:wrap; margin-bottom:8px;
+  }
+  .finding-head h3{ font-size:1.1rem; }
+  .finding p{ max-width:64ch; margin:0 0 12px; }
+  .severity{
+    font-family:"IBM Plex Mono", monospace; font-size:0.68rem; text-transform:uppercase;
+    letter-spacing:0.04em; padding:2px 8px; border-radius:5px; white-space:nowrap;
+  }
+  .severity.critical{ background:var(--risk-soft); color:var(--risk); }
+  .severity.high{ background:var(--warn-soft); color:var(--warn); }
+  .severity.medium{ background:var(--structural-soft); color:var(--structural); }
+
+  /* Decision matrix */
+  .table-wrap{ overflow-x:auto; margin:26px 0; border:1px solid var(--line); border-radius:12px; }
+  table.decisions{ width:100%; border-collapse:collapse; font-size:0.88rem; min-width:760px; }
+  table.decisions th, table.decisions td{ text-align:left; padding:12px 14px; border-bottom:1px solid var(--line); vertical-align:top; }
+  table.decisions thead th{
+    font-family:"IBM Plex Mono", monospace; font-size:0.68rem; text-transform:uppercase;
+    letter-spacing:0.04em; color:var(--ink-soft); background:var(--paper-raised);
+    position:sticky; top:0;
+  }
+  table.decisions tbody tr:last-child td{ border-bottom:none; }
+  table.decisions td.problem{ font-weight:500; max-width:180px; }
+  table.decisions td.pick{ color:var(--accent); font-weight:500; white-space:nowrap; }
+  table.decisions td.skip{ color:var(--ink-soft); font-size:0.85rem; max-width:220px; }
+  .stack-summary{
+    margin:26px 0; padding:20px 22px; border-radius:12px;
+    background:var(--accent-soft); border:1px solid var(--line); font-size:0.98rem;
+  }
+  .stack-summary .k{
+    font-family:"IBM Plex Mono", monospace; font-size:0.72rem; text-transform:uppercase;
+    color:var(--accent); letter-spacing:0.05em; display:block; margin-bottom:8px;
+  }
+  ul.revisit{ margin:14px 0 0; padding-left:1.2em; }
+  ul.revisit li{ margin-bottom:8px; max-width:66ch; }
+
+  .diagram{
+    background:var(--paper-raised); border:1px solid var(--line);
+    border-radius:12px; padding:18px; margin:26px 0; overflow-x:auto;
+  }
+
+  /* Glossary */
+  .glossary{ display:flex; flex-direction:column; gap:0; margin-top:20px; }
+  details.term{
+    border-bottom:1px solid var(--line); padding:14px 0;
+  }
+  details.term summary{
+    cursor:pointer; list-style:none; display:flex; align-items:center; gap:10px;
+    font-family:"IBM Plex Mono", monospace; font-size:0.95rem; color:var(--ink);
+  }
+  details.term summary::-webkit-details-marker{ display:none; }
+  details.term summary::before{
+    content:"+"; color:var(--accent); font-size:1rem; width:1em;
+  }
+  details.term[open] summary::before{ content:"–"; }
+  details.term .def{ margin:10px 0 0 1.9em; color:var(--ink-soft); max-width:60ch; font-size:0.94rem; }
+  .tag{
+    font-size:0.68rem; text-transform:uppercase; letter-spacing:0.04em;
+    padding:2px 6px; border-radius:5px; font-family:"IBM Plex Mono", monospace;
+    background:var(--structural-soft); color:var(--structural);
+  }
+
+  /* Pending chapter */
+  .pending-box{
+    margin-top:26px; padding:26px; border:1px dashed var(--line); border-radius:12px;
+    display:flex; flex-direction:column; gap:14px;
+  }
+  .pending-box .head{ display:flex; align-items:center; gap:10px; }
+  .pending-box textarea{
+    width:100%; min-height:90px; resize:vertical;
+    background:var(--paper); color:var(--ink);
+    border:1px solid var(--line); border-radius:8px; padding:10px 12px;
+    font-family:"IBM Plex Sans", sans-serif; font-size:0.92rem;
+  }
+  .pending-box textarea:focus{ outline:2px solid var(--accent); outline-offset:1px; }
+  .save-note{ font-size:0.76rem; color:var(--ink-soft); font-family:"IBM Plex Mono", monospace; }
+  ul.agenda{ margin:10px 0 0; padding-left:1.2em; color:var(--ink-soft); font-size:0.92rem; }
+  ul.agenda li{ margin-bottom:4px; }
+
+  footer.note{
+    margin-top:80px; padding-top:20px; border-top:1px solid var(--line);
+    color:var(--ink-soft); font-size:0.85rem;
+  }
+
+  @media (prefers-reduced-motion: no-preference){
+    nav.toc a, details.term summary::before{ transition:background 0.15s ease, color 0.15s ease; }
+  }
+</style>
+</head>
+<body>
+
+<div class="layout">
+  <aside class="sidebar">
+    <div class="brand">
+      <span class="kicker">RWD · OMOP · Cohort Generation</span>
+      <h1>Architecture Workbook</h1>
+      <p>Living reference for the FHIR → OMOP → cohort pipeline review.</p>
+    </div>
+
+    <div>
+      <div class="progress-track"><div class="progress-fill" id="progressFill" style="width:71%;"></div></div>
+      <div class="progress-label" id="progressLabel" style="margin-top:6px;">Step 5 of 7 discussed</div>
+    </div>
+
+    <nav class="toc" id="toc">
+      <a href="#ch-intro"><span class="num">00</span><span class="label">How to use this</span></a>
+      <a href="#ch-mental-model"><span class="num">01</span><span class="label">The mental model</span><span class="status done">done</span></a>
+      <a href="#ch-architecture"><span class="num">02</span><span class="label">Architecture diagram</span><span class="status done">done</span></a>
+      <a href="#ch-leaks"><span class="num">03</span><span class="label">What could go wrong</span><span class="status done">done</span></a>
+      <a href="#ch-decisions"><span class="num">04</span><span class="label">Choosing the tools</span><span class="status done">done</span></a>
+      <a href="#ch-target"><span class="num">05</span><span class="label">The system we'll build</span><span class="status done">done</span></a>
+      <a href="#ch-roadmap"><span class="num">06</span><span class="label">Roadmap</span><span class="status pending">pending</span></a>
+      <a href="#ch-glossary"><span class="num">07</span><span class="label">Glossary</span></a>
+    </nav>
+  </aside>
+
+  <main>
+    <section class="chapter" id="ch-intro">
+      <div class="chapter-head">
+        <span class="chapter-eyebrow">START HERE</span>
+      </div>
+      <h2>How this workbook works</h2>
+      <p class="lede">This mirrors the seven-step review: mental model → diagrams → weaknesses → tech decisions → target architecture → roadmap. Each chapter fills in as we cover it in conversation — nothing here is decided ahead of the discussion. Pending chapters have a scratch box for your own notes and open questions, saved locally in your browser.</p>
+    </section>
+
+    <section class="chapter" id="ch-mental-model">
+      <div class="chapter-head">
+        <span class="chapter-eyebrow">STEP 01</span>
+        <span class="status done">done</span>
+      </div>
+      <h2>The mental model</h2>
+      <p class="chapter-dek">No-jargon version: a hospital's records are private and don't play well with anyone else's. This is the plain-English path they take to become an answer to "who qualifies for this trial?" Each step below is one short paragraph — open "Technical details" only if you're curious what it's actually built with.</p>
+
+      <div class="callout">
+        <span class="k">Two terms people mix up</span>
+        <b>FHIR</b> is the shipping label — it makes sure one patient's record can be read the same way no matter which hospital's software wrote it. <b>OMOP</b> is the warehouse layout — it reorganizes thousands of patients' records into one consistent structure so you can count and compare across every hospital at once. You need both, and they do different jobs — one isn't just a fancier version of the other.
+      </div>
+
+      <div class="diagram">
+        <pre class="mermaid">
+flowchart LR
+  A["Hospital's own\nsystem"] --> B["Published in a\nstandard format"]
+  B --> C["Permanent\nuntouched copy"]
+  C --> D["Organized into\nsearchable tables"]
+  D --> E["Medical vocabulary\ntranslated"]
+  E --> F["One shared\nstructure"]
+  F --> G["Common questions\npre-built"]
+  G --> H["Study rules become\na patient list"]
+        </pre>
+      </div>
+
+      <div class="journey">
+
+        <div class="layer">
+          <div class="layer-num">0<div class="dot"></div></div>
+          <div>
+            <h3>The hospital's own system</h3>
+            <p>This is just the hospital's private database — a diagnosis, a lab result, a prescription, stored however that hospital's software happens to store it. Nobody outside can read it directly, the same way you can't open someone else's private spreadsheet over the internet.</p>
+            <details class="term"><summary>Technical details</summary><div class="def">Lives in the EHR (e.g. Epic, Cerner), tied to a local patient ID (MRN). Proprietary schema, not exposed for outside analytics.</div></details>
+          </div>
+        </div>
+
+        <div class="layer">
+          <div class="layer-num">1<div class="dot"></div></div>
+          <div>
+            <h3>Published in a standard format</h3>
+            <p>The hospital's system translates that private record into <b>FHIR</b> — a standard format for health data, similar to how a PDF looks the same on any computer no matter which program made it. The diagnosis, the lab result, and the prescription each become their own clearly labeled piece of data that anyone with permission can read the same way.</p>
+            <details class="term"><summary>Technical details</summary><div class="def">FHIR resources produced: <code>Patient</code>, <code>Condition</code> (the diabetes diagnosis), <code>Observation</code> (the HbA1c result), <code>MedicationStatement</code> (Metformin), <code>Encounter</code>. Older hospital systems may still use HL7 v2, an older messaging format — nobody queries it directly, it's usually converted to FHIR first.</div></details>
+          </div>
+        </div>
+
+        <div class="layer">
+          <div class="layer-num">2<div class="dot"></div></div>
+          <div>
+            <h3>A permanent, untouched copy</h3>
+            <p>Before changing anything, we save an exact copy of what the hospital sent, forever. If we later discover a mistake in how we processed the data, we redo it from here — we usually can't just ask the hospital to send it again. Think of it as keeping the original receipt in case you ever need to dispute a charge.</p>
+            <details class="term"><summary>Technical details</summary><div class="def">Stored as-is in cloud storage (e.g. Azure Data Lake) as JSON, alongside ingestion metadata: source system, timestamp, batch ID.</div></details>
+          </div>
+        </div>
+
+        <div class="layer">
+          <div class="layer-num">3<div class="dot"></div></div>
+          <div>
+            <h3>Organized into searchable tables</h3>
+            <p>Raw files are slow to search. This step loads them into proper tables — like turning a folder of loose receipts into a spreadsheet — so questions get answered quickly later, and so many people can read and write at the same time without corrupting anything.</p>
+            <details class="term"><summary>Technical details</summary><div class="def">Table formats like Iceberg or Delta Lake add version history and safe concurrent writes on top of plain files. Whether we actually need this at our scale is still open — covered in the tech-decisions chapter.</div></details>
+          </div>
+        </div>
+
+        <div class="layer">
+          <div class="layer-num">4<div class="dot"></div></div>
+          <div>
+            <h3>Medical vocabulary gets translated</h3>
+            <p>Different hospitals describe the same disease differently — one writes "T2DM," another "Type 2 Diabetes Mellitus," another just uses a billing code. This step is a giant, pre-built medical dictionary that maps every version to one standard term, so "diabetes" always means the same thing no matter which hospital it came from. This is usually the hardest and most important part of the whole pipeline — more important than any storage technology.</p>
+            <details class="term"><summary>Technical details</summary><div class="def">A source code (e.g. ICD-10 <code>E11.9</code>) is mapped to an OMOP standard concept (e.g. SNOMED <code>201826</code>) using OHDSI's published vocabulary tables — this dictionary already exists, it isn't built from scratch.</div></details>
+          </div>
+        </div>
+
+        <div class="layer">
+          <div class="layer-num">5<div class="dot"></div></div>
+          <div>
+            <h3>Everything lands in one shared structure</h3>
+            <p>Now every patient's data, regardless of which hospital it came from, sits in the same set of organized tables, using the same vocabulary. This is what makes it possible to ask "how many patients across everything we have are diabetic?" as one simple question instead of ten different ones per hospital.</p>
+            <details class="term"><summary>Technical details</summary><div class="def">This shared structure is called the OMOP CDM. Core tables: <code>PERSON</code>, <code>CONDITION_OCCURRENCE</code>, <code>MEASUREMENT</code>, <code>DRUG_EXPOSURE</code> — all linked by <code>person_id</code>.</div></details>
+          </div>
+        </div>
+
+        <div class="layer">
+          <div class="layer-num">6<div class="dot"></div></div>
+          <div>
+            <h3>Common questions get pre-built</h3>
+            <p>Some questions get asked over and over — "show me everything about our diabetic patients," for example. Instead of re-running a complicated multi-table search every time, we build a simplified, ready-made view for that specific question, so it's fast and easy for anyone to use.</p>
+            <details class="term"><summary>Technical details</summary><div class="def">These are called data marts — e.g. a "Diabetes Mart" pre-joining PERSON, CONDITION_OCCURRENCE, MEASUREMENT, and DRUG_EXPOSURE.</div></details>
+          </div>
+        </div>
+
+        <div class="layer">
+          <div class="layer-num">7<div class="dot"></div></div>
+          <div>
+            <h3>A study's rules become a patient list</h3>
+            <p>A clinical trial has written rules, like "age 40+, has diabetes, HbA1c above 7, on Metformin for the last year." This step turns those rules into a precise search and returns the exact list of patients who qualify, with a clear record of why each one was included. An AI can help read a lengthy protocol document and draft those rules — but it never touches the database directly. The actual matching is always done by regular, checkable code, so the result is the same and explainable every time you run it.</p>
+            <details class="term"><summary>Technical details</summary><div class="def">The AI produces a structured specification, not raw SQL. That specification is validated, then compiled into SQL by deterministic code and run against OMOP — covered in the AI-architecture chapter.</div></details>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <section class="chapter" id="ch-architecture">
+      <div class="chapter-head"><span class="chapter-eyebrow">STEP 02</span><span class="status done">done</span></div>
+      <h2>Architecture diagram</h2>
+      <p class="chapter-dek">Same journey as Chapter 01, redrawn as boxes and arrows — which pieces are real services, which cloud they live in, and where the hospital's world ends and ours begins.</p>
+
+      <div class="callout">
+        <span class="k">Important framing</span>
+        This is the <b>starting point as it was described to us</b> — not a recommendation yet. We're drawing it accurately first so we can judge it fairly. The critique happens in the next chapter, "What could go wrong."
+      </div>
+
+      <div class="diagram">
+        <pre class="mermaid">
+flowchart LR
+  subgraph HOSP["Hospital's network — not ours"]
+    EHR["Hospital EHR"]
+  end
+  subgraph GET["Getting data out"]
+    FHIRAPI["FHIR server / API"]
+    PULL["Scheduled pull scripts\n(cron + Python)"]
+  end
+  subgraph STORE["Our cloud storage"]
+    RAWZ["Raw copy, untouched"]
+    LAKE["Organized tables\n(Iceberg)"]
+  end
+  subgraph PROC["Turning it into OMOP"]
+    ETL["ETL scripts\n(Spark / dbt / Python)"]
+    VOC["Vocabulary dictionary\n(OHDSI / Athena)"]
+  end
+  subgraph WARE["OMOP warehouse"]
+    OMOPT["OMOP tables"]
+    MARTS["Ready-made views"]
+  end
+  subgraph GEN["Cohort generation"]
+    AI["AI protocol assistant"]
+    COH["Cohort engine (SQL)"]
+  end
+  OUT["Eligible patient list"]
+  subgraph OPS["Underneath it all: scheduling (cron / NSSM), monitoring, security"]
+  end
+
+  EHR --> FHIRAPI
+  PULL -.triggers.-> FHIRAPI
+  FHIRAPI --> RAWZ --> LAKE --> ETL
+  VOC --> ETL
+  ETL --> OMOPT --> MARTS --> COH
+  AI --> COH
+  COH --> OUT
+  OPS -.-> PULL
+  OPS -.-> ETL
+  OPS -.-> COH
+        </pre>
+      </div>
+
+      <div class="journey">
+
+        <div class="layer">
+          <div class="layer-num">1<div class="dot"></div></div>
+          <div>
+            <h3>Where the boundary sits</h3>
+            <p>The hospital's EHR is the only box we don't own or control — everything to the right of it is our responsibility. The line between "their network" and "our cloud" is the single most important line on this diagram: it's where trust, security, and contracts all have to be figured out first.</p>
+            <details class="term"><summary>Technical details</summary><div class="def">The hospital exposes a FHIR server / API at this boundary. Everything past it runs in our environment (e.g. Azure).</div></details>
+          </div>
+        </div>
+
+        <div class="layer">
+          <div class="layer-num">2<div class="dot"></div></div>
+          <div>
+            <h3>How we currently pull the data</h3>
+            <p>Right now, getting data out means a script wakes up on a timer, asks the hospital's FHIR server "anything new?", and pulls it down — like refreshing your email inbox every hour instead of getting a notification the instant something arrives. That's worth remembering: it's a <em>schedule-based</em> design, not an instant, event-based one.</p>
+            <details class="term"><summary>Technical details</summary><div class="def">Python scripts triggered by cron (Linux) or a similar Windows scheduled task, calling the FHIR REST API.</div></details>
+          </div>
+        </div>
+
+        <div class="layer">
+          <div class="layer-num">3<div class="dot"></div></div>
+          <div>
+            <h3>Where it lands in our cloud</h3>
+            <p>The untouched copy and the organized, searchable version both live in our own cloud storage — this is the "our data" side of the boundary, fully under our control, backed up, and access-controlled.</p>
+            <details class="term"><summary>Technical details</summary><div class="def">Raw JSON in blob storage (e.g. ADLS Gen2); organized tables in a lakehouse table format (e.g. Iceberg).</div></details>
+          </div>
+        </div>
+
+        <div class="layer">
+          <div class="layer-num">4<div class="dot"></div></div>
+          <div>
+            <h3>How it becomes OMOP</h3>
+            <p>Two things happen side by side here: code reshapes the data into OMOP's table structure, while a separate reference dictionary translates each hospital's medical terms into one shared vocabulary. Both feed into the same result.</p>
+            <details class="term"><summary>Technical details</summary><div class="def">ETL/ELT via Spark, dbt, and/or Python; vocabulary mapping backed by OHDSI's Athena vocabulary tables.</div></details>
+          </div>
+        </div>
+
+        <div class="layer">
+          <div class="layer-num">5<div class="dot"></div></div>
+          <div>
+            <h3>The OMOP warehouse</h3>
+            <p>The fully organized, standardized data sits here, plus the ready-made views built for common questions. This is the "single source of truth" the rest of the system reads from.</p>
+            <details class="term"><summary>Technical details</summary><div class="def">OMOP CDM tables (PERSON, CONDITION_OCCURRENCE, etc.) plus SQL views / data marts on top.</div></details>
+          </div>
+        </div>
+
+        <div class="layer">
+          <div class="layer-num">6<div class="dot"></div></div>
+          <div>
+            <h3>Cohort generation</h3>
+            <p>An AI assistant reads a trial protocol and helps draft the matching rules; a separate, deterministic "cohort engine" actually runs those rules as SQL against the warehouse and produces the final patient list. The AI drafts, the engine decides.</p>
+            <details class="term"><summary>Technical details</summary><div class="def">Covered in depth once we reach the AI-architecture chapter — including why the AI is never allowed to write or run SQL directly.</div></details>
+          </div>
+        </div>
+
+        <div class="layer">
+          <div class="layer-num">7<div class="dot"></div></div>
+          <div>
+            <h3>Running underneath everything</h3>
+            <p>This isn't a step in the pipeline — it's the plumbing that keeps every other step running: something has to trigger jobs on schedule, something has to notice when a job fails, and something has to control who's allowed to touch what. Today that's cron jobs and a tool called NSSM (more on that below); whether that's the right long-term choice is a fair question for the next chapter.</p>
+            <details class="term"><summary>Technical details</summary><div class="def"><b>NSSM</b> (Non-Sucking Service Manager) is a small Windows utility that wraps an ordinary script or program so Windows treats it like a background service — it restarts it if it crashes and starts it when the machine boots. It's a common way to keep a Python script "always running" on a Windows server without writing proper Windows service code. It works, but it's a single-machine, manually-managed approach with no built-in way to see job history, retry failures intelligently, or run on more than one server — the kind of thing we'll weigh against alternatives later.</div></details>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <section class="chapter" id="ch-leaks">
+      <div class="chapter-head"><span class="chapter-eyebrow">STEP 03</span><span class="status done">done</span></div>
+      <h2>What could go wrong</h2>
+      <p class="chapter-dek">Ten concrete ways the design in Chapter 02 could fail quietly, ranked by how much damage each would actually do — not by how technically interesting it is.</p>
+
+      <div class="callout">
+        <span class="k">Why this comes before any tool choice</span>
+        None of this is about picking better software yet — it's about naming exactly what a good architecture needs to prevent. Every fix we design later traces back to one of these ten problems.
+      </div>
+
+      <div class="findings">
+
+        <div class="finding">
+          <div class="finding-head"><h3>1. A "raw copy" that isn't actually protected</h3><span class="severity critical">Critical</span></div>
+          <p>We said we'd keep a permanent, untouched copy of everything a hospital sends — but nothing yet stops it from being overwritten, and nothing records which version of our processing code turned a given raw record into a given OMOP row. If a mistake is found in the OMOP conversion six months from now, you need to reprocess exactly the affected data. Without this, you either reprocess everything and hope, or can't reprocess at all.</p>
+          <details class="term"><summary>Why this matters technically</summary><div class="def">Needs write-protected (or at least delete-restricted) raw storage, a batch/run ID stamped on every raw file, and a traceable link from each OMOP row back to the exact raw file and pipeline version that produced it. This is the foundation of data lineage.</div></details>
+        </div>
+
+        <div class="finding">
+          <div class="finding-head"><h3>2. A patient can silently disappear from a cohort</h3><span class="severity critical">Critical</span></div>
+          <p>If a hospital's diagnosis code has no match in the vocabulary dictionary, a simple ETL script typically just drops the row or leaves a field blank — with no error raised anywhere. A genuinely diabetic patient could be missing from a diabetes cohort not because they don't qualify, but because their hospital coded the diagnosis in a way the dictionary didn't recognize. Nobody would know unless they went looking.</p>
+          <details class="term"><summary>Why this matters technically</summary><div class="def">Needs a required step that reports every source code with no standard-concept mapping. An "unmapped rate" should be a number on a dashboard, not a silent failure.</div></details>
+        </div>
+
+        <div class="finding">
+          <div class="finding-head"><h3>3. Running the same cohort twice could give two different answers</h3><span class="severity critical">Critical</span></div>
+          <p>Generate a cohort today, generate the "same" one again in three months — if the vocabulary dictionary was updated, the ETL code was patched, or new data arrived, you could get a different patient list with no record of what changed or why. For a clinical trial, an unexplainable change in patient count is a serious problem, not a minor inconvenience.</p>
+          <details class="term"><summary>Why this matters technically</summary><div class="def">Needs versioning on three axes, stamped on every cohort result: which vocabulary release was used, which pipeline code version ran, and a timestamped snapshot of the underlying data.</div></details>
+        </div>
+
+        <div class="finding">
+          <div class="finding-head"><h3>4. The whole pipeline is one Windows box away from stopping</h3><span class="severity high">High</span></div>
+          <p>Cron jobs and NSSM keep scripts running on a single machine. If that machine goes down, fills up its disk, or gets rebooted for a routine update, every scheduled job silently stops — and nobody finds out until a report is missing days later. There's also no shared view of which jobs ran, which failed, or why; someone has to log into that specific machine and dig through files.</p>
+          <details class="term"><summary>Why this matters technically</summary><div class="def">No retry policy, no dependency graph (nothing stops the ETL job from starting before ingestion finishes), no central log or alert, and no way to run across more than one machine.</div></details>
+        </div>
+
+        <div class="finding">
+          <div class="finding-head"><h3>5. Data arrives on a schedule, not the moment it changes</h3><span class="severity high">High</span></div>
+          <p>A script that wakes up every hour or day and asks "anything new?" means data is always somewhat stale. If the hospital's FHIR server doesn't clearly support "only give me what changed since my last check," the script may re-download everything each run — wasting time and risking duplicate or inconsistent records if two runs overlap.</p>
+          <details class="term"><summary>Why this matters technically</summary><div class="def">Needs confirmation the source supports incremental queries (e.g. a <code>_lastUpdated</code> search parameter), plus idempotent writes downstream so a re-pulled record doesn't create a duplicate.</div></details>
+        </div>
+
+        <div class="finding">
+          <div class="finding-head"><h3>6. Nothing stops bad data from reaching the warehouse everyone trusts</h3><span class="severity high">High</span></div>
+          <p>There's no checkpoint between "ETL just ran" and "this data is now in OMOP, ready to decide trial eligibility." A malformed date, an impossible lab value, or a duplicate record can flow straight through and quietly change who counts as eligible.</p>
+          <details class="term"><summary>Why this matters technically</summary><div class="def">Needs validation gates: schema checks, null/referential-integrity checks, plausibility checks (an HbA1c of 400% is impossible), and row-count anomaly detection — ideally blocking promotion until checks pass.</div></details>
+        </div>
+
+        <div class="finding">
+          <div class="finding-head"><h3>7. Nobody has drawn an enforced line for what the AI can see</h3><span class="severity high">High</span></div>
+          <p>We said the AI drafts matching rules from the protocol but never touches patient data directly — the right instinct, but not yet an enforced rule anywhere. If someone later pastes real query results into a chat to debug something, or the assistant is given broader access for convenience, real patient data could reach a third-party AI service without anyone having decided that was okay.</p>
+          <details class="term"><summary>Why this matters technically</summary><div class="def">Needs an explicit, enforced boundary: the AI's input is limited to protocol text and the concept vocabulary, never raw patient rows; its output is a structured spec, validated before anything executes.</div></details>
+        </div>
+
+        <div class="finding">
+          <div class="finding-head"><h3>8. One hospital's weird data can break everyone's pipeline</h3><span class="severity medium">Medium</span></div>
+          <p>If every hospital's data flows through the same ETL script with no isolation, one hospital sending a slightly malformed record can halt processing for every other hospital's data too, instead of just failing for that one batch.</p>
+          <details class="term"><summary>Why this matters technically</summary><div class="def">Needs per-source fault isolation, so a bad record or schema surprise from one source doesn't block another source's load.</div></details>
+        </div>
+
+        <div class="finding">
+          <div class="finding-head"><h3>9. Nothing is watching the numbers</h3><span class="severity medium">Medium</span></div>
+          <p>If yesterday's ingestion brought in a million lab results and today only ten thousand arrived, would anyone notice — and how fast? The same goes for a cohort count suddenly dropping from 20,000 patients to 300. Right now, nothing compares "today" against "normal" and raises a flag.</p>
+          <details class="term"><summary>Why this matters technically</summary><div class="def">Needs basic pipeline and cohort-result monitoring with thresholds and alerts — covered in the observability chapter.</div></details>
+        </div>
+
+        <div class="finding">
+          <div class="finding-head"><h3>10. Security has been assumed, not designed</h3><span class="severity medium">Medium</span></div>
+          <p>Where do the credentials that let a script call the hospital's FHIR API actually live? Who can query OMOP directly instead of going through an approved view? Is data encrypted, and would anyone be alerted if someone accessed more patient records than their role should ever need? None of this has been decided yet — for healthcare data, it can't be bolted on right before launch.</p>
+          <details class="term"><summary>Why this matters technically</summary><div class="def">Needs secrets management (not credentials sitting in a script file), encryption at rest and in transit, role-based access control, and audit logging of who accessed what.</div></details>
+        </div>
+
+      </div>
+
+      <div class="callout" style="margin-top:32px;">
+        <span class="k">Not a reason to panic</span>
+        This list is exactly why we're reviewing the design before writing code. Every one of these ten problems gets a specific answer when we choose tools (next chapter) and design the target architecture.
+      </div>
+    </section>
+
+    <section class="chapter" id="ch-decisions">
+      <div class="chapter-head"><span class="chapter-eyebrow">STEP 04</span><span class="status done">done</span></div>
+      <h2>Choosing the tools</h2>
+      <p class="chapter-dek">One recommendation per decision, each one chosen specifically to close a gap from Chapter 03 — not a menu, and not the most impressive-sounding option.</p>
+
+      <div class="callout">
+        <span class="k">Updated constraint: no paid Azure</span>
+        Everything below now runs on your own machine (or a free-tier VM) using free, open-source tools — this is much closer to what your RM actually described: Python scripts, Task Scheduler/cron, dbt, Iceberg, Spark if it's ever needed. Nothing here blocks moving to Azure later: every tool picked has a direct managed-Azure equivalent, so upgrading later means changing <em>where</em> something runs, not <em>what</em> it is or rewriting it.
+      </div>
+
+      <div class="stack-summary">
+        <span class="k">The most optimal approach, in one paragraph</span>
+        Build the entire pipeline on free, boring, local tools first: Apache Iceberg for an immutable, versioned raw layer, Postgres for the OMOP warehouse (running in Docker on your own machine — Docker Desktop is free), dbt for every transformation and data-quality check, and Task Scheduler or cron directly for scheduling. That combination alone closes almost every gap from Chapter 03 without spending anything. The only paid piece is the AI layer itself (an API you call per request, typically pennies per run at this scale) — everything else is free until the day this needs to run reliably for people other than you, at which point each piece swaps to its managed-Azure equivalent one at a time.
+      </div>
+
+      <div class="table-wrap">
+        <table class="decisions">
+          <thead>
+            <tr><th>Decision</th><th>Pick (free, local)</th><th>Why</th><th>Azure equivalent, later</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="problem">Where this all runs</td>
+              <td class="pick">Your own machine, or a free-tier VM</td>
+              <td>Zero cost while we build and learn. Every tool below is chosen specifically because it runs identically on a laptop or in the cloud.</td>
+              <td class="skip">A paid Azure subscription — worth it once other people need to depend on this running reliably.</td>
+            </tr>
+            <tr>
+              <td class="problem">Getting data out of the hospital</td>
+              <td class="pick">Python pull scripts using FHIR's incremental search (<code>_lastUpdated</code>)</td>
+              <td>Turns today's "re-download everything" habit into "only fetch what changed" — worth confirming the hospital's FHIR server actually supports it (fixes Ch.03 #5). No cloud dependency either way.</td>
+              <td class="skip">Azure Health Data Services, if we ever need to <em>host</em> our own FHIR server rather than just read from the hospital's.</td>
+            </tr>
+            <tr>
+              <td class="problem">Raw / bronze storage</td>
+              <td class="pick">Apache Iceberg tables on local disk, read and written with PyIceberg (a pure Python library — no Spark or JVM needed)</td>
+              <td>Every load creates a new immutable snapshot, so you can always see exactly what the raw layer looked like before a given change, with safe schema evolution as FHIR data varies — a stronger fix for Ch.03 #1 than a plain folder. The catalog that tracks table metadata can live in the same local Postgres you're already running, so it's one Python library, not a new server.</td>
+              <td class="skip">Point the same Iceberg tables at Azure Data Lake (ADLS Gen2) instead of local disk — the table format and code don't change, only where the files live.</td>
+            </tr>
+            <tr>
+              <td class="problem">Warehouse / OMOP database</td>
+              <td class="pick">Postgres running locally in Docker (Docker Desktop is free)</td>
+              <td>The exact database OHDSI's own tools (ATLAS, Achilles) expect — we inherit their whole ecosystem for free, and the schema/queries don't change at all when this moves to the cloud later.</td>
+              <td class="skip">Azure Database for PostgreSQL — literally a connection-string change when the time comes, nothing to redesign.</td>
+            </tr>
+            <tr>
+              <td class="problem">Extracting FHIR JSON into staging tables</td>
+              <td class="pick">Plain Python</td>
+              <td>Unwrapping nested JSON into rows is a per-record job, not a distributed big-data problem — simpler to write, test, and debug than a Spark job, and free to run anywhere.</td>
+              <td class="skip">—</td>
+            </tr>
+            <tr>
+              <td class="problem">Transforming staging → OMOP → marts</td>
+              <td class="pick">dbt Core (the free, local version — not dbt Cloud)</td>
+              <td>Every transformation becomes a named, tested, documented SQL step with a lineage graph generated for free — directly answers "where did this record come from."</td>
+              <td class="skip">—</td>
+            </tr>
+            <tr>
+              <td class="problem">FHIR-to-OMOP mapping logic</td>
+              <td class="pick">Custom Python/dbt, checked against existing OHDSI reference mappings</td>
+              <td>The existing open-source FHIR→OMOP converters are still fairly immature for production use — worth a short evaluation spike before committing either way.</td>
+              <td class="skip">Adopting a full third-party framework sight-unseen.</td>
+            </tr>
+            <tr>
+              <td class="problem">Vocabulary source</td>
+              <td class="pick">OHDSI Athena vocabulary download, loaded as versioned reference tables</td>
+              <td>Free to download regardless of where anything runs — this dictionary already exists and is maintained by the OHDSI community.</td>
+              <td class="skip">—</td>
+            </tr>
+            <tr>
+              <td class="problem">Orchestration / scheduling</td>
+              <td class="pick">Windows Task Scheduler (or cron on Linux) directly — no NSSM</td>
+              <td>NSSM exists to keep an always-on background service alive; every job in this pipeline is a batch script that runs to completion and exits, so that problem doesn't apply here — Task Scheduler triggering the script directly is one less thing to install and maintain. The Ch.03 concerns (no retry visibility, no shared log) still get fixed cheaply: wrap each script so it writes its own success/failure to a Postgres table, and send yourself an alert on failure.</td>
+              <td class="skip">Azure Data Factory — worth the switch once there are multiple machines, or someone besides you needs to see job health without logging into the server.</td>
+            </tr>
+            <tr>
+              <td class="problem">Data quality gate</td>
+              <td class="pick">dbt tests (schema checks + clinical-plausibility checks)</td>
+              <td>Runs automatically as part of the same transformation step, blocking bad data before it reaches OMOP (fixes Ch.03 #6). Free.</td>
+              <td class="skip">—</td>
+            </tr>
+            <tr>
+              <td class="problem">AI cohort assistant</td>
+              <td class="pick">LLM drafts a structured, validated spec; separate deterministic code compiles it to SQL</td>
+              <td>The one piece with a real, ongoing cost — but it's pay-per-request, typically a small fraction of a dollar per cohort draft, not a subscription or infrastructure spend.</td>
+              <td class="skip">Letting the AI write or run SQL directly — the exact risk named in Chapter 03, regardless of budget.</td>
+            </tr>
+            <tr>
+              <td class="problem">Secrets & access</td>
+              <td class="pick">A local <code>.env</code> file (never committed to git), loaded as environment variables</td>
+              <td>Standard, free practice for local development — still fixes the "credentials hardcoded in a script" gap from Chapter 03.</td>
+              <td class="skip">Azure Key Vault + Managed Identities — swap in once more than one person or machine needs to share credentials safely.</td>
+            </tr>
+            <tr>
+              <td class="problem">Monitoring / alerting</td>
+              <td class="pick">A run-log table in Postgres + a daily script comparing today's row counts to the recent average</td>
+              <td>Directly answers both "would we notice" questions from Chapter 03 — for free, with about twenty lines of SQL and Python.</td>
+              <td class="skip">Azure Monitor / a dedicated observability platform — worth it once alerts need to reliably reach a team, 24/7.</td>
+            </tr>
+            <tr>
+              <td class="problem">Lineage & reproducibility</td>
+              <td class="pick">dbt's built-in lineage graph + a metadata table stamping git commit, vocabulary version, and data snapshot on every run</td>
+              <td>Answers "why did this patient appear in this cohort" without adding a dedicated lineage tool (fixes Ch.03 #1 and #3). Free.</td>
+              <td class="skip">A dedicated lineage platform (e.g. OpenLineage/Marquez) — only if pipelines outgrow dbt's own graph.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="callout">
+        <span class="k">Is Iceberg actually worth the extra moving part?</span>
+        Being fair to the other side of this: Iceberg adds a catalog to run and old snapshots that need periodic cleanup — a plain folder needs neither. That's a genuine cost for a solo project, not a free win just because it's open source. It earns that cost here specifically because it solves the single <em>Critical</em> gap from Chapter 03 — proving what the raw data looked like, and tracing every OMOP row back to an exact version — more solidly than any manual naming convention would, and because PyIceberg lets us get that without the much bigger cost (Spark, a JVM, cluster tuning) that normally comes attached to it.
+      </div>
+
+      <div class="callout">
+        <span class="k">Why this is a good place to start anyway, not just a budget compromise</span>
+        Building on your own machine forces short, fast feedback loops while you're still learning this domain — no cloud latency, no bill to worry about, nothing to tear down. And because every tool here (Iceberg, Postgres, dbt, Python, Task Scheduler) has a direct managed-Azure counterpart, none of this is throwaway work: the schema, the dbt models, and the pipeline logic all move to Azure later largely unchanged. You're not building a "toy" version and a "real" version — you're building the real one, just self-hosted for now.
+      </div>
+
+      <div class="callout">
+        <span class="k">When to actually move pieces to Azure</span>
+        <ul class="revisit">
+          <li><b>Someone other than you needs this to keep running</b> when your laptop is off → move Postgres and the orchestration to the cloud first; everything else can follow gradually.</li>
+          <li><b>You're given real budget or a hospital partner requires cloud hosting for compliance reasons</b> → that's the trigger to start the Azure migration, not data volume by itself.</li>
+          <li><b>Postgres feels slow under load</b> (many concurrent analysts + cohort runs, whether local or cloud) → add a read replica first; consider Spark/Databricks only if that's genuinely not enough.</li>
+          <li><b>Scheduling gets tangled</b> — dozens of steps, complex branching, hard to test locally → that's when Dagster or Airflow (still free, self-hostable) earns its place, independent of any Azure decision.</li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="chapter" id="ch-target">
+      <div class="chapter-head"><span class="chapter-eyebrow">STEP 05</span><span class="status done">done</span></div>
+      <h2>The system we'll build</h2>
+      <p class="chapter-dek">Every Chapter 04 pick, assembled into the one picture you'd actually run on day one — then a straight answer to "what changes as data grows," using the exact 10GB → 100GB → 1TB → 10TB+ scale your RM asked about.</p>
+
+      <div class="diagram">
+        <pre class="mermaid">
+flowchart LR
+  SRC["Hospital FHIR API\n(or synthetic data)"] --> PULL["Python pull script\n(Task Scheduler)"]
+  PULL --> ICE["Iceberg raw tables\n(PyIceberg, local disk)"]
+  ICE --> STG["Python loader"]
+  STG --> PG[("Postgres in Docker:\nstaging to OMOP to marts, via dbt")]
+  LLM["LLM drafts cohort spec"] --> COMPILE["Python: validate + compile to SQL"]
+  COMPILE --> PG
+  PG --> OUT["Eligible patient list"]
+        </pre>
+      </div>
+
+      <div class="callout">
+        <span class="k">MVP, defined precisely</span>
+        One source of data (real or synthetic), running end-to-end on your own machine: pull → immutable Iceberg snapshot → dbt-tested load into OMOP → a mart → a cohort definition compiled and run as SQL, with every result stamped with which git commit, vocabulary version, and data snapshot produced it. If a run fails, you get an alert, not silence. That's it — that's a complete, defensible MVP, not a stripped-down placeholder.
+      </div>
+
+      <div class="table-wrap">
+        <table class="decisions">
+          <thead>
+            <tr><th>Data scale</th><th>What actually changes</th><th>What you still don't need</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="problem">~10GB<br><span style="font-weight:400;color:var(--ink-soft);">day one, one source, real or synthetic</span></td>
+              <td>Nothing — this is exactly the MVP pictured above, unmodified.</td>
+              <td class="skip">A bigger machine, incremental dbt models, Spark, a hosted database.</td>
+            </tr>
+            <tr>
+              <td class="problem">~100GB<br><span style="font-weight:400;color:var(--ink-soft);">one real hospital, full history</span></td>
+              <td>Switch dbt models from "rebuild everything" to incremental (only process new or changed rows), so nightly runs stay fast. Start actually deleting old Iceberg snapshots on a schedule instead of letting them accumulate forever.</td>
+              <td class="skip">A bigger machine, Spark, a hosted database — your laptop is still fine.</td>
+            </tr>
+            <tr>
+              <td class="problem">~1TB<br><span style="font-weight:400;color:var(--ink-soft);">several hospitals, or years of granular labs</span></td>
+              <td>Move Postgres off your laptop onto a dedicated machine (or Azure, if there's budget by then). Give each hospital its own scheduled job and credentials, so one source's bad data or schema quirk truly can't touch another's — closing Ch.03 #8 for real, not just in principle.</td>
+              <td class="skip">Spark — a properly indexed Postgres on real hardware still comfortably handles this. Kubernetes.</td>
+            </tr>
+            <tr>
+              <td class="problem">~10TB+<br><span style="font-weight:400;color:var(--ink-soft);">many hospitals feeding concurrently</span></td>
+              <td>This is the first point where one Postgres instance and single-machine Python jobs become a genuine bottleneck. Worth evaluating Spark/Databricks for the transform layer, and a real orchestrator (Dagster or Airflow) to manage dependencies across many sources instead of Task Scheduler.</td>
+              <td class="skip">Streaming/Kafka — batch pulls are still fine unless a hospital can actually push real-time events, which is a separate decision from raw volume.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="callout">
+        <span class="k">Treat these numbers as "roughly when to start looking," not hard cutoffs</span>
+        The exact threshold where a laptop or a single Postgres instance starts to strain depends on your hardware, your indexes, and how the cohort queries are written — not just raw gigabytes. The point of this table isn't precision, it's knowing which problem to watch for, so you upgrade one piece at a time instead of guessing at a "production-scale" redesign up front.
+      </div>
+    </section>
+
+    <section class="chapter" id="ch-roadmap">
+      <div class="chapter-head"><span class="chapter-eyebrow">STEP 06</span><span class="status pending">pending</span></div>
+      <h2>Roadmap</h2>
+      <p class="chapter-dek">The order we'd actually build this in, starting with made-up (synthetic) patient data so nothing real is ever at risk while we're learning.</p>
+      <div class="pending-box">
+        <div class="head"><span class="tag">not yet discussed</span></div>
+        <textarea data-key="notes-roadmap" placeholder="Target dates or milestones already set…"></textarea>
+        <span class="save-note">Autosaved in this browser only.</span>
+      </div>
+    </section>
+
+    <section class="chapter" id="ch-glossary">
+      <div class="chapter-head"><span class="chapter-eyebrow">REFERENCE</span></div>
+      <h2>Glossary</h2>
+      <p class="chapter-dek">Terms introduced so far. This grows as new chapters land.</p>
+
+      <div class="glossary">
+        <details class="term"><summary>EHR <span class="tag">system</span></summary><div class="def">Electronic Health Record — the hospital's internal system of record (Epic, Cerner). Not directly queryable from outside.</div></details>
+        <details class="term"><summary>HL7 v2 <span class="tag">standard</span></summary><div class="def">Legacy healthcare messaging standard — pipe-delimited, event-driven (e.g. <code>ORU^R01</code> for a lab result). Still runs most real-time ADT and lab feeds, but isn't queried directly for analytics.</div></details>
+        <details class="term"><summary>FHIR <span class="tag">standard</span></summary><div class="def">Fast Healthcare Interoperability Resources — REST API + JSON standard for exchanging one patient's clinical data in a predictable shape, regardless of source EHR.</div></details>
+        <details class="term"><summary>Patient / Condition / Observation / MedicationStatement / Encounter <span class="tag">FHIR resources</span></summary><div class="def">Core FHIR resource types: demographics, a diagnosis, a measured value (e.g. HbA1c), a reported medication, and the visit tying them together.</div></details>
+        <details class="term"><summary>Bronze / silver / gold <span class="tag">pattern</span></summary><div class="def">Common lakehouse layering: bronze = raw/immutable, silver = cleaned/conformed, gold = curated for consumption.</div></details>
+        <details class="term"><summary>OMOP CDM <span class="tag">standard</span></summary><div class="def">Observational Medical Outcomes Partnership Common Data Model — a normalized schema for population-level analytics, vocabulary-standardized so the same query works across data sources.</div></details>
+        <details class="term"><summary>PERSON / CONDITION_OCCURRENCE / MEASUREMENT / DRUG_EXPOSURE <span class="tag">OMOP tables</span></summary><div class="def">Core OMOP tables joined on <code>person_id</code>: patient identity, diagnoses, lab/vital values, and medication exposure periods.</div></details>
+        <details class="term"><summary>Standard concept <span class="tag">vocabulary</span></summary><div class="def">The OHDSI-designated canonical code for a clinical idea (e.g. SNOMED <code>201826</code> for Type 2 diabetes) — what a source code like ICD-10 <code>E11.9</code> gets mapped to.</div></details>
+        <details class="term"><summary>Concept set <span class="tag">cohort logic</span></summary><div class="def">A standard concept plus all of its clinically valid descendant codes — e.g. "diabetes" expands to dozens of specific SNOMED codes.</div></details>
+      </div>
+    </section>
+
+    <footer class="note">
+      Living document — grows chapter by chapter as we work through the review. Nothing in a "pending" chapter is a recommendation yet.
+    </footer>
+  </main>
+</div>
+
+<script>
+(function(){
+  // Mermaid (standalone local file — loaded via CDN since native rendering only applies inside the Artifacts viewer)
+  if(window.mermaid){
+    var dark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+    mermaid.initialize({ startOnLoad: true, theme: dark ? 'dark' : 'default', securityLevel: 'loose' });
+  }
+
+  // Active-section highlighting
+  var links = Array.prototype.slice.call(document.querySelectorAll('#toc a'));
+  var sections = links.map(function(a){ return document.querySelector(a.getAttribute('href')); }).filter(Boolean);
+  var byId = {};
+  links.forEach(function(a){ byId[a.getAttribute('href').slice(1)] = a; });
+
+  if('IntersectionObserver' in window){
+    var obs = new IntersectionObserver(function(entries){
+      entries.forEach(function(entry){
+        var link = byId[entry.target.id];
+        if(!link) return;
+        if(entry.isIntersecting){
+          links.forEach(function(l){ l.classList.remove('active'); });
+          link.classList.add('active');
+        }
+      });
+    }, { rootMargin: '-10% 0px -70% 0px', threshold: 0 });
+    sections.forEach(function(s){ obs.observe(s); });
+  }
+
+  // Smooth scroll
+  links.forEach(function(a){
+    a.addEventListener('click', function(e){
+      var target = document.querySelector(a.getAttribute('href'));
+      if(target){
+        e.preventDefault();
+        target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    });
+  });
+
+  // Notes autosave (per-viewer, local only)
+  var boxes = document.querySelectorAll('textarea[data-key]');
+  boxes.forEach(function(box){
+    var key = 'workbook:' + box.getAttribute('data-key');
+    try{
+      var saved = localStorage.getItem(key);
+      if(saved) box.value = saved;
+    }catch(e){}
+    box.addEventListener('input', function(){
+      try{ localStorage.setItem(key, box.value); }catch(e){}
+    });
+  });
+})();
+</script>
+</body>
+</html>
