@@ -78,10 +78,36 @@ def load_table(conn, csv_gz_path: Path, table: str):
     return count
 
 
-def main(size: str = "100k"):
+def fhir_data_would_be_wiped(conn) -> int:
+    """
+    TRUNCATE CASCADE on omop.person (and the clinical tables) wipes anything
+    Task 1b merged in, without touching omop._fhir_patient_map -- which is
+    exactly how this got orphaned once already: re-running this script after
+    a FHIR merge silently destroyed it, and nothing caught it because foreign
+    keys are deferred (see README). Returns how many FHIR patients are at risk.
+    """
+    with conn.cursor() as cur:
+        cur.execute("select to_regclass('omop._fhir_patient_map')")
+        if cur.fetchone()[0] is None:
+            return 0
+        cur.execute("select count(*) from omop._fhir_patient_map")
+        return cur.fetchone()[0]
+
+
+def main(size: str = "100k", force: bool = False):
+    conn = get_conn()
+    at_risk = fhir_data_would_be_wiped(conn)
+    if at_risk and not force:
+        conn.close()
+        print(f"REFUSING TO RUN: {at_risk} FHIR-merged patient(s) exist in omop._fhir_patient_map.")
+        print("Re-running this script TRUNCATEs omop.person and the clinical tables, which would")
+        print("wipe them (this happened once already -- see README's 'notes from actually running")
+        print("this'). If you're certain you want to reload SynPUF and then re-run")
+        print("omop/merge_fhir_patients.py afterward, pass --force.")
+        sys.exit(1)
+
     data_dir = download_all(size)  # no-ops for files already on disk
 
-    conn = get_conn()
     print(f"\nLoading into Postgres schema '{SCHEMA}'...")
     try:
         for table in LOAD_ORDER:
@@ -91,8 +117,14 @@ def main(size: str = "100k"):
     finally:
         conn.close()
     print("\nDone.")
+    if at_risk:
+        print(f"\nReminder: re-run `python omop/merge_fhir_patients.py` now to restore "
+              f"the {at_risk} FHIR-merged patient(s) this just truncated.")
 
 
 if __name__ == "__main__":
-    size_arg = sys.argv[1] if len(sys.argv) > 1 else "100k"
-    main(size_arg)
+    args = sys.argv[1:]
+    force_flag = "--force" in args
+    args = [a for a in args if a != "--force"]
+    size_arg = args[0] if args else "100k"
+    main(size_arg, force=force_flag)

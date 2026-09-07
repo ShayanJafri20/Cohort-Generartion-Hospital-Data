@@ -13,6 +13,7 @@ Building step by step, per task:
 - [x] **Task 1b — FHIR → OMOP mapping**: 13 hand-designed synthetic FHIR patients → Iceberg (raw, immutable) → vocabulary-mapped (`vocabulary/mini_concepts.csv`) → merged directly into the *same* `omop.person` / `condition_occurrence` / `measurement` / `drug_exposure` tables SynPUF populated, with non-colliding surrogate keys and a rerun-safe `omop._fhir_patient_map`. Verified: the one deliberately unmapped patient correctly lands as `condition_concept_id = 0` instead of being silently miscounted as T2D.
 - [x] **Task 2 — AI cohort assistant**: protocol text → Gemini (free tier) drafts a structured `CohortSpec` → JSON-Schema-validated → deterministically compiled to SQL → run against `marts.diabetes_mart` (built on the merged OMOP tables) → result stamped with git commit + vocabulary version. Verified: a tampered spec with a SQL-injection payload is rejected by schema validation before it ever reaches a query, and the real query returns exactly the 5 patients designed to qualify.
 - [x] **Orchestration + monitoring**: `orchestration/run_pipeline.py` is the single command (what Task Scheduler would call nightly) that runs the repeatable steps in order and stops at the first real failure; `monitoring/daily_check.py` logs row counts every run and flags a >30% drop against the previous run instead of staying silent. Verified across two consecutive full runs with stable, correct counts (and a real bug caught and fixed in the process — see notes below).
+- [x] **UI**: `ui/app.py`, a local Streamlit dashboard over everything above — pipeline run history with a one-click "run now," an OMOP data browser, the vocabulary mapping report, and the full cohort builder (draft with Gemini, view the compiled SQL, run it, try to break it with an injection payload). No new logic, just makes the existing scripts visible.
 
 ## Setup
 
@@ -32,7 +33,11 @@ python cohort/run_cohort.py    # spec -> validated -> compiled to SQL -> execute
 
 # The repeatable pipeline (what Task Scheduler runs nightly) — one command:
 python orchestration/run_pipeline.py
+
+# The UI — everything above, but visual
+python -m streamlit run ui/app.py
 ```
+Opens at `http://localhost:8501`.
 
 ### Scheduling it for real
 
@@ -85,3 +90,21 @@ the workbook's Chapter 04 reasoning.
   went into `vocabulary/mapping_report.py`, which had the identical bug.
   Caught by actually running the pipeline twice and checking row counts, not
   by code review.
+- **A real orphaned-data incident, and what it says about deferred FK
+  constraints.** Following this README's own setup steps in order a second
+  time — specifically re-running `omop/load_synpuf.py` after Task 1b had
+  already merged the 13 FHIR patients — silently wiped `omop.person` back to
+  just the 100k SynPUF rows (that script `TRUNCATE`s before reloading).
+  `omop._fhir_patient_map` wasn't touched, so a later `merge_fhir_patients.py`
+  run saw those 13 patients as "already existing," skipped recreating their
+  `person` rows, but still deleted-and-reinserted their condition/measurement/
+  drug rows — creating rows that pointed at a `person_id` with no `person`
+  row behind it. Nothing caught this, because `OMOPCDM_postgresql_5.4_constraints.sql`
+  is deliberately not applied yet (see above) — this is exactly the failure
+  mode that gap leaves open, now observed for real instead of just reasoned
+  about. Fixed two ways: `merge_fhir_patients.py` now checks whether the
+  `person` row actually exists rather than trusting the map, and self-heals
+  if it doesn't; `load_synpuf.py` now refuses to run (without `--force`) if
+  any FHIR-merged patients exist, since re-running it is what caused this.
+  Repaired and reverified against live data — `omop.person` back to 100,013,
+  zero orphaned rows, cohort query back to the correct 5 matches.

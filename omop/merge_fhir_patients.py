@@ -120,14 +120,36 @@ def main():
     patient_id_map = {}  # fhir patient id -> person_id
     new_patients, reused_patients = 0, 0
 
+    healed_patients = 0
     with conn.cursor() as cur:
         for p in patients:
             fhir_id = p["id"]
+            gender_concept = 8507 if p.get("gender") == "male" else 8532 if p.get("gender") == "female" else 0
+            birth_date = p.get("birthDate")
+            year = int(birth_date[:4]) if birth_date else None
+
             cur.execute(f"select person_id from {SCHEMA}._fhir_patient_map where fhir_patient_id = %s", (fhir_id,))
             existing = cur.fetchone()
+
             if existing:
                 person_id = existing[0]
-                reused_patients += 1
+                # Don't just trust the map: something else (e.g. re-running the
+                # SynPUF bulk loader, which TRUNCATEs omop.person) can wipe the
+                # person row without touching this map. Self-heal rather than
+                # silently leaving condition/measurement/drug rows orphaned --
+                # exactly the bug this comment used to not guard against.
+                cur.execute(f"select 1 from {SCHEMA}.person where person_id = %s", (person_id,))
+                if cur.fetchone() is None:
+                    cur.execute(
+                        f"""insert into {SCHEMA}.person
+                            (person_id, gender_concept_id, year_of_birth, birth_datetime,
+                             race_concept_id, ethnicity_concept_id, person_source_value)
+                            values (%s, %s, %s, %s, 0, 0, %s)""",
+                        (person_id, gender_concept, year, birth_date, fhir_id),
+                    )
+                    healed_patients += 1
+                else:
+                    reused_patients += 1
                 # idempotent rerun: wipe this person's previously-merged clinical rows first
                 cur.execute(f"delete from {SCHEMA}.condition_occurrence where person_id = %s", (person_id,))
                 cur.execute(f"delete from {SCHEMA}.measurement where person_id = %s", (person_id,))
@@ -135,9 +157,6 @@ def main():
             else:
                 person_id = person_alloc.take()
                 new_patients += 1
-                gender_concept = 8507 if p.get("gender") == "male" else 8532 if p.get("gender") == "female" else 0
-                birth_date = p.get("birthDate")
-                year = int(birth_date[:4]) if birth_date else None
                 cur.execute(
                     f"""insert into {SCHEMA}.person
                         (person_id, gender_concept_id, year_of_birth, birth_datetime,
@@ -205,7 +224,8 @@ def main():
     conn.commit()
     conn.close()
 
-    print(f"Patients: {new_patients} new, {reused_patients} reused (rerun-safe)")
+    print(f"Patients: {new_patients} new, {reused_patients} reused, {healed_patients} healed "
+          f"(person row was missing despite being in the map -- recreated)")
     print(f"Inserted: {n_cond} conditions, {n_meas} measurements, {n_drug} drug exposures")
     print(f"FHIR-sourced patients in omop.person: {total} total, person_id {min_id}..{max_id}")
 
