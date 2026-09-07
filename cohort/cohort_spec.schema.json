@@ -1,0 +1,36 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CohortSpec",
+  "description": "The only shape an LLM-drafted cohort request is ever allowed to take. A closed, enum-constrained vocabulary on purpose — nothing here can become arbitrary SQL, because nothing here can express arbitrary SQL.",
+  "type": "object",
+  "required": ["cohort_name", "inclusion", "exclusion"],
+  "additionalProperties": false,
+  "properties": {
+    "cohort_name": { "type": "string", "minLength": 1, "maxLength": 200 },
+    "inclusion": {
+      "type": "object",
+      "required": ["min_age", "concept", "measurement", "drug_exposure"],
+      "additionalProperties": false,
+      "properties": {
+        "min_age": { "type": "integer", "minimum": 0, "maximum": 120 },
+        "concept": { "type": "string", "enum": ["t2d"] },
+        "measurement": {
+          "type": "object",
+          "required": ["type", "operator", "value"],
+          "additionalProperties": false,
+          "properties": {
+            "type": { "type": "string", "enum": ["hba1c"] },
+            "operator": { "type": "string", "enum": [">", "<", ">=", "<="] },
+            "value": { "type": "number", "minimum": 0, "maximum": 25 }
+          }
+        },
+        "drug_exposure": { "type": "string", "enum": ["metformin", "none"] }
+      }
+    },
+    "exclusion": {
+      "type": "array",
+      "items": { "type": "string", "enum": ["esrd", "pregnancy"] },
+      "uniqueItems": true
+    }
+  }
+}

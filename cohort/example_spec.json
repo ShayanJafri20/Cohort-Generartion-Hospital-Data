@@ -1,0 +1,10 @@
+{
+  "cohort_name": "T2D, uncontrolled, on Metformin, age 40+",
+  "inclusion": {
+    "min_age": 40,
+    "concept": "t2d",
+    "measurement": { "type": "hba1c", "operator": ">", "value": 7 },
+    "drug_exposure": "metformin"
+  },
+  "exclusion": ["esrd", "pregnancy"]
+}
