@@ -1,0 +1,16 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: cohort-omop-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${PGUSER:-cohort_admin}
+      POSTGRES_PASSWORD: ${PGPASSWORD:-changeme_local_dev_only}
+      POSTGRES_DB: ${PGDATABASE:-cohort_omop}
+    ports:
+      - "${PGPORT:-5432}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+volumes:
+  pgdata:

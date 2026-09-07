@@ -9,7 +9,8 @@ RWD/OMOP cohort-generation platform — FHIR ingestion, OMOP CDM mapping, and an
 
 Building step by step, per task:
 
-- [ ] **Task 1 — OMOP mapping**: FHIR/synthetic ingestion → Iceberg (raw) → vocabulary mapping → OMOP CDM in Postgres, plus the CMS DE-SynPUF (100k patient) OMOP dataset loaded for scale
+- [x] **Task 1a — SynPUF into OMOP**: CMS DE-SynPUF (100k patients, real OMOP CDM v5.3 data) downloaded from AWS Open Data and bulk-loaded into a Postgres `omop` schema built from the official OHDSI v5.4 DDL — **~58M rows loaded across 17 tables**, verified.
+- [ ] **Task 1b — FHIR → OMOP mapping**: synthetic FHIR ingestion → Iceberg (raw) → vocabulary mapping → merged into the same OMOP tables
 - [ ] **Task 2 — AI cohort assistant**: protocol → structured cohort spec → validated → compiled to SQL → executed against OMOP
 
 ## Setup
@@ -17,6 +18,23 @@ Building step by step, per task:
 ```bash
 python -m venv .venv
 .venv\Scripts\pip install -r requirements.txt
-copy .env.example .env
+copy .env.example .env      # then edit PGPORT if 5432/5433 are already taken locally
 docker compose up -d
+python omop/apply_ddl.py    # creates the OMOP CDM v5.4 schema (tables, PKs, indices)
+python omop/load_synpuf.py  # downloads + bulk-loads the 100k-patient SynPUF dataset
 ```
+
+### Notes from actually running this
+
+- **Port conflicts are likely.** This dev machine had two unrelated native Postgres
+  processes already bound to 5432 and 5433. `docker-compose.yml` reads `PGPORT` from
+  `.env`, so just pick a free port there — no code changes needed.
+- **SynPUF's CSVs are OMOP CDM v5.3, not v5.4.** `omop/load_synpuf.py` loads each
+  table using that CSV's own header as the column list (so newer v5.4-only columns
+  like `location.country_concept_id` are simply left NULL), and applies a small
+  rename map for the two columns OHDSI actually renamed between versions
+  (`visit_occurrence.admitting_source_*` → `admitted_from_*`, etc.) — confirmed by
+  diffing every CSV header against the DDL, not by guessing.
+- **`OMOPCDM_postgresql_5.4_constraints.sql` is intentionally not applied yet** —
+  it foreign-keys every `*_concept_id` column to `concept`/`vocabulary`, which
+  aren't loaded until the real OHDSI Athena vocabulary is (a separate step).
