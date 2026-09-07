@@ -28,7 +28,7 @@ from cohort.validate_spec import validate_spec, load_schema  # noqa: E402
 
 load_dotenv(Path(__file__).resolve().parent.parent / ".env")
 
-MODEL = "gemini-2.5-flash"  # free-tier eligible; bump here, nothing else changes
+MODEL = "gemini-3.6-flash"  # per the API itself: 2.5-flash is deprecated for new users
 
 SYSTEM_PROMPT = """You turn a short clinical trial eligibility description into a CohortSpec
 JSON object that strictly matches the given JSON Schema. Only use the enum values the
