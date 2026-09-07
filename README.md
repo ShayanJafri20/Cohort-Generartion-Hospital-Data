@@ -12,6 +12,7 @@ Building step by step, per task:
 - [x] **Task 1a — SynPUF into OMOP**: CMS DE-SynPUF (100k patients, real OMOP CDM v5.3 data) downloaded from AWS Open Data and bulk-loaded into a Postgres `omop` schema built from the official OHDSI v5.4 DDL — **~58M rows loaded across 17 tables**, verified.
 - [x] **Task 1b — FHIR → OMOP mapping**: 13 hand-designed synthetic FHIR patients → Iceberg (raw, immutable) → vocabulary-mapped (`vocabulary/mini_concepts.csv`) → merged directly into the *same* `omop.person` / `condition_occurrence` / `measurement` / `drug_exposure` tables SynPUF populated, with non-colliding surrogate keys and a rerun-safe `omop._fhir_patient_map`. Verified: the one deliberately unmapped patient correctly lands as `condition_concept_id = 0` instead of being silently miscounted as T2D.
 - [x] **Task 2 — AI cohort assistant**: protocol text → Gemini (free tier) drafts a structured `CohortSpec` → JSON-Schema-validated → deterministically compiled to SQL → run against `marts.diabetes_mart` (built on the merged OMOP tables) → result stamped with git commit + vocabulary version. Verified: a tampered spec with a SQL-injection payload is rejected by schema validation before it ever reaches a query, and the real query returns exactly the 5 patients designed to qualify.
+- [x] **Orchestration + monitoring**: `orchestration/run_pipeline.py` is the single command (what Task Scheduler would call nightly) that runs the repeatable steps in order and stops at the first real failure; `monitoring/daily_check.py` logs row counts every run and flags a >30% drop against the previous run instead of staying silent. Verified across two consecutive full runs with stable, correct counts (and a real bug caught and fixed in the process — see notes below).
 
 ## Setup
 
@@ -20,19 +21,31 @@ python -m venv .venv
 .venv\Scripts\pip install -r requirements.txt
 copy .env.example .env      # then edit PGPORT if 5432/5433 are already taken locally
 docker compose up -d
+# One-time setup (schema creation + a static historical bulk load — not re-run nightly)
 python omop/apply_ddl.py             # creates the OMOP CDM v5.4 schema (tables, PKs, indices)
 python omop/load_synpuf.py           # downloads + bulk-loads the 100k-patient SynPUF dataset
-python ingestion/generate_synthetic_data.py  # writes 13 synthetic FHIR bundles
-python raw/load_raw.py               # raw JSON -> immutable Iceberg snapshot
-python vocabulary/mapping_report.py  # flags any source codes with no concept mapping
-python omop/merge_fhir_patients.py   # vocabulary-maps + merges those patients into omop.*
 python vocabulary/athena_loader.py   # loads the vocab version table (for run stamping)
-python marts/create_diabetes_mart.py # builds the mart view cohort queries run against
 
 # Task 2 — set GEMINI_API_KEY in .env first (free, no billing: https://aistudio.google.com/apikey)
 python cohort/llm_draft.py     # protocol text -> structured spec (falls back without a key)
 python cohort/run_cohort.py    # spec -> validated -> compiled to SQL -> executed -> stamped
+
+# The repeatable pipeline (what Task Scheduler runs nightly) — one command:
+python orchestration/run_pipeline.py
 ```
+
+### Scheduling it for real
+
+`orchestration/run_pipeline.py` runs the steps; it doesn't register itself with
+Task Scheduler. To actually schedule it nightly at 2 AM (run once, as admin if needed):
+
+```powershell
+schtasks /create /tn "CohortPipeline" /tr "\"C:\Users\admins2\Desktop\Cohort Generation\.venv\Scripts\python.exe\" \"C:\Users\admins2\Desktop\Cohort Generation\orchestration\run_pipeline.py\"" /sc daily /st 02:00
+```
+
+`monitoring/daily_check.py` exits non-zero on an alert, so a failed Task
+Scheduler run shows up in Task Scheduler's own history — no NSSM needed, per
+the workbook's Chapter 04 reasoning.
 
 ### Notes from actually running this
 
@@ -55,6 +68,20 @@ python cohort/run_cohort.py    # spec -> validated -> compiled to SQL -> execute
   expected, not a bug — worth knowing before assuming a cohort query "isn't
   finding" real SynPUF patients that were never going to qualify on this data.
 - **Gemini, not Claude, for Task 2** — `google-genai` (the current SDK; the
-  older `google-generativeai` package is deprecated), `gemini-2.5-flash`
-  (confirmed free-tier eligible), structured output via `response_json_schema`
-  passing our existing `cohort_spec.schema.json` directly, no Pydantic needed.
+  older `google-generativeai` package is deprecated), structured output via
+  `response_json_schema` passing our existing `cohort_spec.schema.json`
+  directly, no Pydantic needed. Model name needed a live fix: `gemini-2.5-flash`
+  (what the docs said was free-tier eligible) turned out to already be
+  deprecated for new users by the time this ran — the API's own error message
+  named the replacement (`gemini-3.6-flash`), which is what's actually in the
+  code now. Worth re-checking if this breaks again; Google moves fast here.
+- **The raw Iceberg layer is append-only on purpose, and that has a sharp
+  edge**: re-running ingestion adds a new snapshot on top of the last one, so
+  a resource pulled again unchanged shows up twice in `table.scan()`. The
+  first version of `omop/merge_fhir_patients.py` didn't account for this and
+  silently doubled every condition/measurement/drug row on the second
+  pipeline run. Fixed by collapsing to one row per `(resource_type,
+  resource_id)` — latest `ingested_at` wins — before merging; the same fix
+  went into `vocabulary/mapping_report.py`, which had the identical bug.
+  Caught by actually running the pipeline twice and checking row counts, not
+  by code review.

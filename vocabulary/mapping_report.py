@@ -36,13 +36,24 @@ def load_vocab():
     return vocab
 
 
+def dedupe_to_latest(rows):
+    """Same append-only raw layer as omop/merge_fhir_patients.py -- collapse
+    to one row per (resource_type, resource_id) before reporting, or a
+    resource pulled again unchanged gets reported as unmapped once per
+    historical snapshot instead of once."""
+    latest = {}
+    for r in sorted(rows, key=lambda r: r["ingested_at"]):
+        latest[(r["resource_type"], r["resource_id"])] = r
+    return list(latest.values())
+
+
 def main():
     vocab = load_vocab()
     table = get_or_create_raw_table()
 
     scanned = 0
     unmapped = []
-    for row in table.scan().to_arrow().to_pylist():
+    for row in dedupe_to_latest(table.scan().to_arrow().to_pylist()):
         resource_type = row["resource_type"]
         if resource_type not in CODING_PATHS:
             continue

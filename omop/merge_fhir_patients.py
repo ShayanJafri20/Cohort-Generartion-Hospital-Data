@@ -77,10 +77,27 @@ class IdAllocator:
         return val
 
 
+def dedupe_to_latest(rows):
+    """
+    The raw Iceberg table is append-only by design (Chapter 03 concern #1) --
+    every ingestion run adds a new snapshot on top of the last, on purpose.
+    That means a resource pulled again unchanged shows up more than once in
+    table.scan(), and this "merge into current OMOP state" step must resolve
+    that down to one row per (resource_type, resource_id) -- the latest
+    ingested copy -- or every rerun would double-insert. Immutable history
+    downstairs, current state upstairs; conflating the two is exactly the bug
+    this function exists to prevent.
+    """
+    latest = {}
+    for r in sorted(rows, key=lambda r: r["ingested_at"]):
+        latest[(r["resource_type"], r["resource_id"])] = r
+    return list(latest.values())
+
+
 def main():
     vocab = load_vocab()
     raw_table = get_or_create_raw_table()
-    rows = raw_table.scan().to_arrow().to_pylist()
+    rows = dedupe_to_latest(raw_table.scan().to_arrow().to_pylist())
     resources = [json.loads(r["raw_json"]) | {"_patient_id": r["patient_id"],
                                                "_resource_type": r["resource_type"],
                                                "_batch_id": r["batch_id"]} for r in rows]
