@@ -1,0 +1,7 @@
+source_system,source_code,standard_concept_id,standard_concept_name,domain
+http://hl7.org/fhir/sid/icd-10,E11.9,201826,Type 2 diabetes mellitus,Condition
+http://snomed.info/sct,44054006,201826,Type 2 diabetes mellitus,Condition
+http://snomed.info/sct,431857002,4030518,End stage renal disease,Condition
+http://snomed.info/sct,77386006,4136529,Patient currently pregnant,Observation
+http://loinc.org,4548-4,3004410,Hemoglobin A1c,Measurement
+http://www.nlm.nih.gov/research/umls/rxnorm,6809,1503297,Metformin,Drug
